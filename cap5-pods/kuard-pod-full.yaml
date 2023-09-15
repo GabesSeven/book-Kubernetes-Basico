@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Pod
+metadata:
+	name: kuard
+spec:
+	# define todos os volumes que poderão ser acessados pelos contêiners que estão no manifesto Pod 
+	volumes:
+		- name: "kuard-data"
+		# persistência de dados em discos remotos
+		nfs:
+			server: my.nfs.server.local
+			path: "/exports"
+	containerPort: 
+		- image: gcr.io/kuar-demo/kuard-amd64:blue
+		name: kuard
+		ports:
+			- containerPort: 8080
+			name: http
+			protocol: TCP
+		resources:
+			# limite mínimo
+			# faz com que o contêiner seja colocado em uma máquina com metade de uma CPU livre e 128MB de memória alocada para ele.
+			requests:
+				cpu: "500m"
+				memory: "128Mi"
+			# limite máximo
+			# faz com que o contêiner seja colocado em uma máquina uma CPU livre e 256MB de memória alocada para ele.
+			limits:
+				cpu: "1000m"
+				memory: "256Mi"
+			# define todos os volumes que serão montados em um container particular e o path com o qual cada volume deverá ser montado.
+			# dois contêiners diferentes podem montar o mesmo volume com path distintos.
+			# volume chamado "kuard-data" é montado pelo contêiner no path "/data".
+			volumesMounts:
+				- mountPath: "/data"
+				name: "kuard-data"
+			# liveness (vitalícia) determina se uma aplicação está executando de forma apropriada;
+ 			# liveness (vitalícia) quando apresentam falhas, contêiners são reiniciados;
+ 			livenessProbe:
+				httpGet:
+					path: /healthy
+					port: 8080
+				initialDelaySeconds: 5
+				timeoutSeconds: 1
+				periodSeconds: 10
+				failureThreshould: 3
+ 			# readiness (prontidão) descreve quando um contêiner está pronto para atender às requisições dos usuários;
+ 			# readiness (prontidão) quando apresentam falhas, contêiners são removidos dos balanceadores de carga do serviço;
+			readinessProbe:
+				httpGet:
+					path: /healthy
+					port: 8080
+				initialDelaySeconds: 30
+				timeoutSeconds: 1
+				periodSeconds: 10
+				failureThreshould: 3

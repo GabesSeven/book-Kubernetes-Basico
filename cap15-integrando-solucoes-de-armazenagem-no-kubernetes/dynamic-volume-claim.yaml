@@ -1,0 +1,13 @@
+kind: PersistentVolume
+apiVersion: v1
+# PersistentVolumeClaim utiliza a classe de amazenagem default criada em "storageclass" para reivindicar um volume persistente recém-criado
+metadata:
+  name: my-claim
+  annotations:
+    volume.beta.kubernetes.io/storage-class: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

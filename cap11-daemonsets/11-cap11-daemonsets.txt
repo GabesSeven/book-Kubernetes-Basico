@@ -1,0 +1,78 @@
+********************* OBS.: *********************
+Existem dois motivos para se criar redundância:
+    - criação de serviços Deployments e ReplicaSets;
+    - escalonar um único Pod em cada nó e deixar algum tipo de agente ou daemon nesses nós, objeto DaemonSet é responsável por isso.
+
+DaemonSet:
+ - garante que uma cópia de um Pod executará em um conjunto de nós em um cluster kubernetes;
+ - implanta daemons de sistemas (coletores de log, agentes de monitoração);
+ - trabalha semelhante ao ReplicaSets, ou seja, ambos criam Pods que se espera que sejam serviços de longa duração fazendo os estados desejado e observado se coincidam;
+
+ReplicaSets: se usa quando a aplicação está totalmente desacoplada do nó e puder executar várias cópias em um dado nó;
+DaemonSets: devem ser usados quando uma única cópia de sua aplicação tiver de executar em todos ou em um subconjunto de nós do cluster ;
+*************************************************
+
+********************* OBS.: *********************
+DaemonSet:
+ - "nodeName": especifica quais nós um Pod executará no momento da criação do Pod;
+*************************************************
+kubectl apply -f fluentd.yaml
+
+--------------------------------------------------
+Consultar o estado atual do DaemonSet
+--------------------------------------------------
+kubectl describe daemonset fluentd
+
+--------------------------------------------------
+Exibir nós aos quais cada pod fluentd foi atribuído
+--------------------------------------------------
+kubectl get pods -o wide
+
+
+********************* OBS.: *********************
+Limitando os DaemonSet a nós específicos:
+ - por exemplo, carga de trabalho que exija uma GPU ou um acesso rápido de armazenagem disponível apenas em um subconjunto de nós de seu cluster;
+ - rótulos poderão ser usados para atribuir uma tag a nós específicos que atendam aos requisitos da carga de trabalho;
+*************************************************
+
+--------------------------------------------------
+Adicionar rótulos "ssd=true" em um único nó
+--------------------------------------------------
+kubectl label nodes k0-default-pool-35609c18-z7tb ssd=true
+
+--------------------------------------------------
+Selecionar todos os nós presente no cluster
+--------------------------------------------------
+kubectl label nodes 
+
+--------------------------------------------------
+Selecionar nós que possuem o rótulo "ssd=true"
+--------------------------------------------------
+kubectl label nodes --selector ssd=true
+
+********************* OBS.: *********************
+Limitando os DaemonSet a nós específicos:
+ - remover rótulos de um no especificados por um seletor de nós em um DaemonSet fará com que o pod gerenciado por DaemonSet seja removido do nó;
+ - o inverso acontece se adicionar o rótulo a um nó.
+*************************************************
+kubectl apply -f nginx-fast-storage.yaml
+kubectl get pods -o wide
+
+********************* OBS.: *********************
+Atualizando DaemonSet:
+ - ocorre de maneira equivalente a um objeto Deployment que gerencia o rollout de um DaemonSet no cluster;
+
+Atualizando contínua de um DaemonSet:
+ - campo "spec.updateStrategy.type" com o valor "RollingUpdate" qualquer alteraçao no campo ou subcampos "spec.template" iniciará uma atualização contínua (rolling update);
+ - RollingUpdate atualiza gradualmente (100%... 120%... 100%... 120%... cria Pods a mais para não deixar o sistema em defasagem) os membros de um DaemonSet.
+
+Parâmetros específicos que controlam a atualização contínua de um DaemonSet:
+ - "spec.minReadySeconds" determina por quanto tempo um Pod deverá estar "pronto" para que a atualização contínua prossiga e atualize os Pods subsequentes (30-60 segundos é o recomedado);
+ - "spec.updateStrategy.rollingUpdate.maxUnavailable" que informa quantos Pods poderão ser simultâneamente atualizados pela atualização contínua. (ideal começar com 1 e ir aumentando caso a velocidade esteja baixa)
+*************************************************
+
+--------------------------------------------------
+Remover um DaemonSet, também removerá todos os Pods gerenciados por esse DaemonSet, execeto se for especificado a flag "cascade=false"
+--------------------------------------------------
+kubectl delete -f <nome-do-daemon>
+kubectl delete -f fluentd.yaml

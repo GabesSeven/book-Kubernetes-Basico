@@ -1,0 +1,10 @@
+kind: Endpoints
+apiVersion: v1
+# criando manualmente endpoints para o balanceador se comunicar com os seviços, no caso de não haver DNS e ser somente por IP a comunicação com serviços externos
+metadata:
+  name: external-ip-database
+subsets:
+  - addresses:
+    - ip: 192.168.0.1
+    ports: 
+    - port: 3306 

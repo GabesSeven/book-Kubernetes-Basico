@@ -1,0 +1,71 @@
+--------------------------------------------------
+Básico sobre Kubernetes:
+--------------------------------------------------
+https://www.okteto.com/blog/kubernetes-basics/
+
+--------------------------------------------------
+Instalar Okteto CLI:
+--------------------------------------------------
+https://www.okteto.com/docs/cloud/okteto-cli/
+https://www.okteto.com/docs/getting-started/
+
+--------------------------------------------------
+Exemplos de Docker e docker-compose para Django + PostGreeSQL:
+--------------------------------------------------
+https://gdevillele.github.io/compose/django/
+https://www.okteto.com/blog/deploying-a-django-app-on-okteto/
+https://www.okteto.com/blog/how-to-develop-django-and-postgres-applications-with-docker-and-okteto-cli-2-0/
+
+--------------------------------------------------
+Subir a aplicação (deve possui Dockerfile, requirements.txt e Docker-compose se houver comunicação com banco ou APIs):
+--------------------------------------------------
+https://www.youtube.com/watch?v=yjgHHUT-5-s
+okteto up
+
+--------------------------------------------------
+Gerar um novo token de autenticação
+--------------------------------------------------
+okteto context use https://cloud.okteto.com
+
+--------------------------------------------------
+Instalar kubectl
+--------------------------------------------------
+https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
+
+--------------------------------------------------
+Conectar cluster Okteto ao kubectl
+--------------------------------------------------
+https://www.okteto.com/docs/cloud/credentials/
+
+--------------------------------------------------
+Conectar seu cluster Kubernetes ao Okteto
+--------------------------------------------------
+okteto login
+
+--------------------------------------------------
+Configurar o namespace atual do "okteto context"
+--------------------------------------------------
+okteto namespace
+
+--------------------------------------------------
+Exibir as configurações kubeconfig mescladas ou um arquivo " kubeconfig" especificado
+--------------------------------------------------
+kubectl config view
+
+--------------------------------------------------
+Recuperar uma lista de todos os recursos em um namespace
+--------------------------------------------------
+kubectl get all
+
+--------------------------------------------------
+Listar todos os recursos do tipo "Ingress" em um cluster Kubernetes que é um recurso do que gerencia o acesso externo a serviços dentro do cluster. Atua como um controlador de balanceamento de carga para rotear o tráfego HTTP e HTTPS para serviços específicos com base em regras definidas.
+https://kubernetes.io/docs/concepts/services-networking/ingress/
+--------------------------------------------------
+kubectl get ingresses
+
+--------------------------------------------------
+Obter informações detalhadas sobre uma aplicação deployment específica no Kubernetes
+--------------------------------------------------
+kubectl describe deployment <deployment-name>
+
+

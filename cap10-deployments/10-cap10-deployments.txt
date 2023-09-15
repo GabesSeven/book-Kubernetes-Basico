@@ -1,0 +1,185 @@
+********************* OBS.: *********************
+Pods, ReplicaSets e Services são usados para construir uma única instância de sua aplicação, mas não ajudam a gerenciar o lançamento de novas versões.
+
+Deployment:
+ - gerencia versões permitindo que você passe de uma versão de seu código para a próxima;
+ - realiza verificação de sanidade ao trocar de versões;
+ - ideal para realizar rollout, deixando a ação possível e segura;
+ - antigamente era necessário executar "kubectl rolling-update".
+*************************************************
+kubectl create -f kuard-deployment.yaml
+
+********************* OBS.: *********************
+ReplicaSets gerenciam Pods utilizando rótulos;
+Deployments gerenciam ReplicaSets rótulos;
+*************************************************
+
+--------------------------------------------------
+Ver seletor de rótulos
+--------------------------------------------------
+kubectl get deployments kuard -o jsonpath --template {.spec.selector.matchLabels}
+
+--------------------------------------------------
+Encontrando seletor de rótulos no ReplicaSet específico
+--------------------------------------------------
+kubectl get replicasets --selector=run=kuard
+
+--------------------------------------------------
+Redimensionar o deployment usando o comando imperativo "scale"
+--------------------------------------------------
+kubectl scale deployments kuard --replicas=2
+kubectl get replicasets --selector=run=kuard
+
+********************* OBS.: *********************
+    Tentar inverter os estados, ou seja, voltar a ter uma replica. 
+    Continou com uma única réplica, pois na hierarquia Deployments -> ReplicaSets -> Pods
+o manifesto do Deployment está definido como dusa réplicas, por isso, esse é o estado desejado
+*************************************************
+kubectl scale replicasets kuard-1128242161 --replicas=1
+kubectl get replicasets --selector=run=kuard
+
+********************* OBS.: *********************
+Gerenciar de forma declarativa as configurações para o Kubernetes
+Salvar o download do deployment em um arquivo YAML    
+*************************************************
+kubectl get deployments kuard --export -o yaml > kuard-deployment.yaml
+kubectl replace -f kuard-deployment.yaml --save-config
+
+--------------------------------------------------
+Acrescentar anotações de modo que, ao aplicar alterações no futuro, o kubectl saberá qual foi a última configuração aplicada
+--------------------------------------------------
+kubectl replace --save-config
+
+********************* OBS.: *********************
+Especificação do Deployment tem uma estrutura muito parecida com a especificação do ReplicaSet;
+Há um template do Pod que especifica vários contêiners que serão criados para cada réplica gerenciada pelo deployment;
+Objeto "strategy" determina os diferentes modos pelos quais o rollout de um novo software pode ocorrer.
+Dois tipos de "strategy": Recreate e RollingUpdate.
+*************************************************
+
+--------------------------------------------------
+Obter informações detalhadas sobre um deployment
+--------------------------------------------------
+kubectl describe deployments kuard
+
+********************* OBS.: *********************
+"OldReplicaSets" e "NewReplicaSets" apontam para os objetos ReplicaSet que esse deployment está gerenciando no momento:
+ - se um deployment estiver no meio de um rollout, ambos os campos se tornam valorados
+ - senão, "OldReplicaSets" fica como "<none>"
+*************************************************
+
+--------------------------------------------------
+Ver histórico de rollout associados a um deployments 
+Ver status atual de um rollout  
+--------------------------------------------------
+kubectl rollout history
+kubectl rollout status
+
+
+********************* OBS.: *********************
+Atualização de deployments:
+ - escalar deployment: por meio do manifesto YAML, através do parâmetro "spec";
+ - imagem de contêiner: por meio do manifesto YAML, através do parâmetro "conteiners". Recomendado colocar anotações no "Kubernetes.io/change-cause";
+*************************************************
+kubectl apply -f kuard-deployment.yaml
+
+--------------------------------------------------
+Monitorar a Atualização do deployment 
+--------------------------------------------------
+kubectl rollout status deployments kuard
+kubectl get replicasets -o wide
+
+--------------------------------------------------
+Pausar temporariamente o rollout 
+--------------------------------------------------
+kubectl rollout pause deployments kuard
+
+--------------------------------------------------
+Reiniciar o rollout 
+--------------------------------------------------
+kubectl rollout resume deployments kuard
+
+--------------------------------------------------
+Ver histórico de rollout 
+Flag "--revision" para visualizar dados de uma versão específica
+--------------------------------------------------
+kubectl rollout history deployments kuard --revision=2
+
+--------------------------------------------------
+Desfazer o último rollout
+--------------------------------------------------
+kubectl rollout undo deployments kuard
+kubectl get replicasets -o wide
+
+
+********************* OBS.: *********************
+Rollback:
+ - quando para uma versão anterior, o deployment reutilizará o template e lhe atribuirá um novo número (sobrescreve o antigo).
+ - "--to-revision" quando rollback para uma versão específica;
+ - "0" para especificar um rollback para um versão anterior;
+ - existe formas de limitar o tamanho do histórico para não ficar muito grande utilizando "spec". 
+*************************************************
+kubectl rollout undo deployment kuard --to-revision=3
+kubectl rollout history deployment kuard deployment.extensions/kuard
+kubectl rollout undo deployment kuard --to-revision=0
+
+--------------------------------------------------
+...
+spec:
+    # Fazemos rollout diários, portanto, limitaremos o histórico de versões para duas semanas, não pretendendo fazer rollback para versões anteriores a esse período.
+    revisionHistoryLimit: 14
+--------------------------------------------------
+
+
+********************* OBS.: *********************
+Estratégia de deployment:
+ - "Recreate" é a mais simples, atualiza o ReplicaSet gerenciado para que utilize a nova imagem e encerra tdos os Pods assosciados ao deployment. Recriará os Pods a partir da nova imagem;
+ - "Recreate" acarreta em um período downtime do site, ideal para testes onde o usuário final não tenha acesso direto;
+ - "RollingUpdate": atualiza alguns Pods de cada vez, progredindo gradualmente;
+ - "RollingUpdate": sem downtime, pode ser realizado rollout em um serviço ainda que esteja recebendo tráfego do usuário final; 
+*************************************************
+
+********************* OBS.: *********************
+Gerenciando várias versões de seu serviço:
+ - tomar cuidado, no momento realizar rollback, devido as diferentes versões que podem estar executando pelo tráfego do cliente; 
+ - "arquitetura desacoplada": front isolado do back por meio de um contrato de API e um balanceador de carga; 
+ - "arquitetura acoplada": front cliente denso, compilado no fronten, usado para se conectar diretamente com o back; 
+*************************************************
+
+********************* OBS.: *********************
+Configurando uma atualização contínua (rolling update):
+ - "maxUnavailable": define o número máximo de Pods que podem estar indisponíveis durante uma atualização contínua (rapidez que a atualização ocorrerá);
+ - "maxUnavailable": pode ser com valores inteiros (3, ou seja, no máximo três Pods poderão estar indisponíveis) ou com porcentagem (20%, ou seja, 20% do número desejado de réplicas poderá estar indisponível);
+ - "maxSurge": para capacidade do cluster não cair abaixo do 100%, mas utilizando recursos adicionais temporariamente a fim de efetuar um rollout; 
+ - "maxSurge": definir maxUnavailable=100% e controlar o rollout com o parâmetro maxSurge;
+ - "maxSurge": pode ser específicado com um número absoluto ou como uma porcentagem; 
+ - "maxSurge": cria réplicas a mais antes de destrir as antigas, assim o cluster sempre terá 120%.. 100%.. 120%.. 100&% até todas as atualizações ocorrerem; 
+    Reacrete = RollingUpdate com maxUnavailable utilizando 100%
+*************************************************
+
+********************* OBS.: *********************
+Rollout mais lentos:
+ - ajudam garantir serviço estável e saudável, o controlador de deployment sempre esperará um pod sinalizar que está pronto antes de começar a atualizar o outro;
+ - deve estar especificado as verificações de sanidade de readiness;
+ - "minReadySeconds": pode-se definir um tempo de espera enter a atualização de um Pod para outro, assim você consegue visualizar possíveis bugs, vazamento de memória, entre outros.
+ - "progressDeadlineSeconds": quando as atualizações são automatizadas, pode ser interessante ter também um timeout para o rollout em si, caso ocorra uma excessão o código deve tratar isso.
+*************************************************
+
+--------------------------------------------------
+...
+# Esperar 60 segundos antes de passar para a 
+spec:
+    minReadySeconds: 60
+    progressDeadlineSeconds: 600
+...
+--------------------------------------------------
+
+********************* OBS.: *********************
+Removendo deployment:
+ - pode ser feito por comando imperativo ou arquivo YAML;
+ - todo o serviço será removido (ReplicaSet, Pods, Services), não só o deployment;
+ - "--cascade=false": pode ser usada para excluir exclusivamente o Deployment;
+*************************************************
+kubectl delete deployments kuard
+kubectl delete -f kuard-deployment.yaml
+

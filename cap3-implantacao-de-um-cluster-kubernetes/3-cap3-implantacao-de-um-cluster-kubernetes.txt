@@ -1,0 +1,27 @@
+**** OBS.: muitos dos comandos do livro estão obsoletos ****
+--------------------------------------------------
+Verificar se um determinado comando existe 
+--------------------------------------------------
+kubectl --help
+
+--------------------------------------------------
+Exibe duas versões do kubectl instalado no servidor e no cliente 
+--------------------------------------------------
+kubectl version
+
+--------------------------------------------------
+Possiveis comando "kubectl get <command>  
+--------------------------------------------------
+https://kubernetes.io/pt-br/docs/reference/kubectl/cheatsheet/
+
+--------------------------------------------------
+São componentes de um cluster: Domain Name System (DNS), proxy e Graphical User Interface (GUI). 
+Acessar o dashboard do Kubernetes através da URL:
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/
+--------------------------------------------------
+kubectl proxy
+
+
+
+

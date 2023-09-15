@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+# reunião de todos outros "mongo*.yaml"
+metadata:
+  name: mongo
+spec:
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:3.4.1
+        command:
+        - mongod
+        - replset
+        - 'rs0'
+        ports:
+        - containerPort: 27017
+          name: web
+      # Este contêiner inicializa o servidor mongodb e dorme em seguida
+      - name: init-mongo
+        image: mongo:3.4.1
+        command:
+        - bash
+        - /config/init.sh
+        volumeMounts:
+        - name: config
+          mouthPath: /config
+        volumes:
+        - name: config
+          configMap:
+            name: "mongo-init"

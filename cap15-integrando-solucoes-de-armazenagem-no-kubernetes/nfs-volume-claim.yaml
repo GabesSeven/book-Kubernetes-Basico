@@ -1,0 +1,14 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+# reinvidicar volume para o Pod
+metadata:
+  name: database
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      volume: my-volume

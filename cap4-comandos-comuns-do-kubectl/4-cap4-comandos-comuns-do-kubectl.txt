@@ -1,0 +1,170 @@
+********************* OBS.: *********************
+Namespace é como se fosse uma pasta que armazena um conjunto de objetos 
+*************************************************
+
+
+********************* OBS.: *********************
+ - Contexto são as configurações presente em $HOME/.kube/config
+(Por exemplo, como encontrar seu cluster e se autenticar)
+ - Contexto padrão usa o namespace "default"
+*************************************************
+
+
+--------------------------------------------------
+Modificar/Criar o namespace padrão de "default" para "mystuff"
+--------------------------------------------------
+kubectl config set-context my-context --namespace=mystuff
+
+
+--------------------------------------------------
+Usar o novo namespace padrão "mystuff"
+--------------------------------------------------
+kubectl config use-context my-context
+
+
+********************* OBS.: *********************
+ - "get" é o comando padrão para visualizar ojetos Kubernetes
+*************************************************
+kubectl get <nome_recurso>
+kubectl get <nome_recurso> <nome_objeto>
+
+
+********************* OBS.: *********************
+ - "-o" seta saídas para melhor visualização
+*************************************************
+kubectl <comando> -o wide
+kubectl <comando> -o json
+kubectl <comando> -o yaml
+
+
+********************* OBS.: *********************
+ - "--no-headers" ignora os cabeçalhos no início da tabela
+ - JSONPath para selecionar campos do cabeçalho específicos
+*************************************************
+
+--------------------------------------------------
+Extrair e exibir endereços de IP específicos
+--------------------------------------------------
+kubectl get pods my-pod -o jsonpath --template={.status.podIP}
+
+
+--------------------------------------------------
+Ver informações mais detalhadas do objeto
+--------------------------------------------------
+kubectl describe <nome_recurso> <nome_objeto>
+
+
+********************* OBS.: *********************
+ - objetos da API Kubernetes são representados com oarquivos JSON ou YAML. Só atualiza se houver diferenças entre o local e o servidor, não retorna erro.
+*************************************************
+
+
+--------------------------------------------------
+Criar/atualizar objeto por YAML
+--------------------------------------------------
+kubectl apply -f <nome_objeto>.yaml
+
+
+--------------------------------------------------
+Sem realizar alterações, somente para analisar o comando "apply"
+--------------------------------------------------
+kubectl apply -f --dry-run <nome_objeto>.yaml
+
+
+********************* OBS.: *********************
+ - "edit"realiza modificações iterativas em vez de editar o arquivo local. Apenas baixa o estado do objeto, não modificando os dados.
+*************************************************
+kubectl edit <nome_recurso> <nome_objeto>
+
+
+********************* OBS.: *********************
+ - "apply" TAMBÉM registra ou manipula histórico de configurações anteriores em uma anotação no objeto.
+OPÇÕES: 
+ - view-last-applied
+ - set-last-applied
+ - edit-last-applied
+ 
+*************************************************
+kubectl apply -f <nome_objeto>.yaml view-last-applied
+
+
+--------------------------------------------------
+Remover um objeto. NÃO HÁ CONFIRMAÇÃO DE DELEÇÃO.
+--------------------------------------------------
+kubectl delete -f <nome_objeto>.yaml
+kubectl delete <nome_recurso> <nome_objeto>
+
+
+********************* OBS.: *********************
+ - "annotate" anotação
+ - "label" rótulo
+ - "--overwirte" sobrescreve um rótulo existente
+Exemplo: adicionando rótulo "color=red" a um objeto
+*************************************************
+kubectl label pods <nome_pod> color=red
+
+
+--------------------------------------------------
+Remover um rótulo existente.
+--------------------------------------------------
+kubectl label pods bar <nome_rotulo>-
+kubectl label pods bar color-
+
+
+********************* OBS.: *********************
+Ver logs de um contêiner em execução.
+ - "-f" para executar o log em tempo real
+*************************************************
+kubectl logs <nome_pod>
+kubectl logs -f <nome_pod>
+
+
+********************* OBS.: *********************
+ - "exec" para executar um comando em um contêiner em execução. O exemplo abre um shell no container em execução.
+ - "attach" caso não haja terminal no contêiner, pois inicia um processo de vinculação para possibilitar dados de entrada.
+*************************************************
+kubectl exec -it <nome_pod> --bash
+kubectl attach -it <nome_pod>
+
+
+--------------------------------------------------
+Copiar arquivos de e para um contêiner locais ou/e remotos.
+--------------------------------------------------
+kubectl cp <nome_pod>:</path/para/arquivo/remoto> </path/para/arquivo/local>
+
+
+********************* OBS.: *********************
+ - "port-forward" para encaminhar tráfego de rede da sua máquina local para o Pod remoto. Para acessar seu Pod por meio da rede.
+ - Ao especificar m servço específico, o tráfego de dados não passará peo balanceador de carga de serviço.
+*************************************************
+kubectl port-forward <nome_pod> 8080:80
+kubectl port-forward services/<nome_seviço> 8080:80
+
+
+********************* OBS.: *********************
+ - "top" lista recursos em uso pelos nós ou pelos Pods.
+ - "--all-namespaces" visualiza o uso de recursos por todos os Pods
+*************************************************
+kubectl top nodes
+kubectl top pods
+kubectl top --all-namespaces pods
+
+
+--------------------------------------------------
+Instalar e ativar preenchimento automático no Debian.
+--------------------------------------------------
+sudo apt install bash-completion
+echo "source <(kubectl completion bash)" >> ${HOME}/.bashrc
+
+
+********************* OBS.: *********************
+ - Além do kubectl há outras formas de manipular containers como plug-ins em editores de código: VSC, intelliJ, Eclipse
+ - Ou app de código aberto para manipular pelo celular: https://github.com/binamilabs/cabin
+*************************************************
+
+
+--------------------------------------------------
+Obter mais informações.
+--------------------------------------------------
+kubectl help
+kubectl help <nome-do-comando>

@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: path-ingress
+spec:
+  rules:
+  # todo serviço será direcionado tudo que vier para http://bandicoot.example.com.br para o serviço "bandicoot" também para o serviço "alpaca"   
+  # por padrão o tráfego é redirecionado para o maior path 
+  - host: bandicoot.example.com
+    http:
+      paths: 
+      - path: "/"
+        backend:
+          serviceName: bandicoot
+          servicePort: 8080
+      - path: "/a/"
+        backend:
+          serviceName: alpaca
+          servicePort: 8080

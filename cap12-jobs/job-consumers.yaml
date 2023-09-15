@@ -1,0 +1,30 @@
+# Consumir pode-se retirar itens da fila de tarefas, criar uma chave e sair da fila quando estiver vazia;
+# Iniciar até 5 Pods em paralelo colocando o job em um modo de pool de workers, pois o parâmetro "completions" não está definido;
+# Nenhum dos workers deverá terminar até que a tarefa esteja totalmente concluída e todos estarão no processo de finalização.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: message-queue
+    component: consumer
+    chapter: jobs
+  name: consumers
+spec:
+  parallelism: 5
+  template:
+      metadata:
+        labels:
+          app: message-queue
+          component: consumer
+          chapter: jobs
+      spec:
+        containers:
+        - name: worker
+          image: "gcr.io/kuar-demo/kuard-amd64:blue"
+          imagePullpolicy: Always
+          args:
+          - "--keygen-enable"
+          - "--keygen-exit-on-complete"
+          - "--keygen-memq-server=htp://queue:8080/memq/server"
+          - "--keygen-memq-queue=keygen"
+          restartPolicy: OnFailure

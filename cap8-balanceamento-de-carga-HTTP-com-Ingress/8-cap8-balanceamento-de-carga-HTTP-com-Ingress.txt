@@ -1,0 +1,102 @@
+********************* OBS.: *********************
+Objeto Service:
+ - atua na camada 4 do modelo OSI, apenas encaminha conexões TCP e UDP;
+ - "type: NodePort", os clientes deverão se conectar com ma única porta por serviço; 
+ - "type: LoadBalancer", alocará recursos em nuvem. 
+
+"Hospedagem virtual", resolver sem Kunernetes:
+ - hospedar vários sites em único IP utilizando um balanceador de carga u um proxy;
+
+Ingress:
+ - balanceador de carga do Kubernetes;
+ - (a) padroniza a configuração;
+ - (b) passa a configuração para um objeto Kubernetes;
+ - (c) combina vários objetos Ingress em uma única configuração para o balanceador de carga.
+
+Controlador de Ingress:
+ - sistema de software exposto externamente ao cluster que funciona como uma proxy;
+ - faz uso de um serviço com "type: loadBalancer";
+ - configuração é resultante da leitura e monitoração de objetos Ingress.
+*************************************************
+
+
+********************* OBS.: *********************
+Objetos Ingress:
+ - dividido em especificação Ingress e controlador Ingress;
+ - não há controlador Ingress padrão no Kubernetes, portanto o usuário deverá instalar implementaçõs opcionais;
+ - existem diversos balanceadores de cargas, ou seja, nã há uma padronização (por exemplo, ELB da AWS e balanceadores de carga de hardware).
+*************************************************
+
+
+********************* OBS.: *********************
+https://raw.githubusercontent.com/projectcontour/contour/release-1.26/examples/render/contour.yaml
+
+Controlador Contour:
+ - controlador criado para configurar balanceamento de carga de código aberto;
+ - traduz objetos Ingress em algo que o Envoy (balanceador de carga de código aberto) possa compreender;
+ - comando deve ser exeuctado por um usuário com permissão "cluster-admin"
+*************************************************
+kubectl apply -f https://j.hept.io/contour-deployment-rbac
+
+
+--------------------------------------------------
+Consultar endereço externo do Contour
+--------------------------------------------------
+kubectl get -n heptio-contour service contour -o wide
+
+
+********************* OBS.: *********************
+Configurando DNS:
+ - configurar entradas DNS para o endereço externo do balanceador de cargas;
+ - controlador Ingress desempenhará o papel de "guarda de trânsito", direcionando as requisições de acordo com o nome do host;
+ - se usar Minikube em Linux: /etc/hosts   ;
+ - se usar Minikube em Windows: C:\Windows\System32\drives\etc\hosts  ;
+ - se usar Minikube em Mac: sudo killall -HUP mDNSResponder  ;
+ - "host -t <endereço>" para obter o IP de um nome de host;
+ - requisições nao tratadas, geralmente, são enviadas para um serviço chamado "default-http-backend" no namespace "kube-system";
+ - para reduzir o escopo das anotações, é possível separar um único objeto Ingress em vários objetos, o controlador de Ingress lê e combina os diferentes objetos.
+*************************************************
+Editar o arquivo acrescentando a linha: <endereço-ip> alpaca.example.com bandicoot.example.com
+
+--------------------------------------------------
+Criar serviços upstream para ver o funcionamento do controleador de Ingress
+--------------------------------------------------
+kubectl run be-default --image=grc.io/kuar-demo/kuard-amd64:blue --replicas=3 --port=8080
+kubectl expose deployment be-default
+kubectl run alpaca --image=grc.io/kuar-demo/kuard-amd64:green --replicas=3 --port=8080
+kubectl expose deployment alpaca
+kubectl run bandicoot --image=grc.io/kuar-demo/kuard-amd64:purple --replicas=3 --port=8080
+kubectl expose deployment bandicoot
+kubectl get services -o wide
+
+********************* OBS.: *********************
+Uso do Ingress:
+ - simple-ingress.yaml, uso mais simples, deixar passar tudo cegamente para um serviço upstream;
+ - path-ingress.yaml, direcionar o tráfego com base não dó no nome de host, mas também no path da requisição. Usado para hospedar vários serviços em path distintos de um único domínio;
+ - tls-secret.yaml, especificar ou criar um secret de modo imperativo para servir sites usando TLS e HTTPS. 
+*************************************************
+kubectl apply -f host-ingress.yaml
+ingress.extensions/host-ingress created
+kubectl get ingress
+kubectl describe ingress host-ingress
+
+
+--------------------------------------------------
+Limpar o cluster
+--------------------------------------------------
+kubectl delete ingress host-ingress path-ingress simple-ingress
+kubectl delete service alpaca bandicoot be-default
+kubectl delete deployment alpaca bandicoot be-default
+
+--------------------------------------------------
+Criar um secret de modo imperativo.
+--------------------------------------------------
+kubectl create secret tls <nome-do-secret> --cert <arquivo-pem-do-certificado> --key <arquivos-pem-da-chave-privada>
+
+********************* OBS.: *********************
+Alternativa para os Controladores de Ingress, existem muitas empresas que usam o Ingress de maneira exclusiva como base para novos produtos e projetos:
+ - NGINX
+ - Ambassador
+ - Gloo
+ - Traefik
+*************************************************

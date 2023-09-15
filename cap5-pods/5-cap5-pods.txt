@@ -1,0 +1,163 @@
+********************* OBS.: *********************
+Aplica ções executando no mesmo Pod compartilham o mesmo:
+ - IP;
+ - porta (namespace de rede);
+ - nome de host (namespace de UTS);
+ - podem se comunicam usando canais entre processos. 
+
+Se as aplicações funcionam corretamente em máquinas diferentes, podem ser colocadas em Pods difenrentes. Senão, não pode... 
+
+*************************************************
+
+
+--------------------------------------------------
+Criar um Pod, antigamente existia a flag --generator, hoje basta executar o comando "run" que o Pod é criado
+--------------------------------------------------
+kubectl run kuard --generator=run-pod/v1 --image=gcr.io/kuar-demo/kuard-amd64:blue
+kubectl run kuard --image=gcr.io/kuar-amd64:blue
+
+
+--------------------------------------------------
+Verificar o status do Pod
+--------------------------------------------------
+kubectl get pods
+
+
+********************* OBS.: *********************
+Manifesto de Pod:
+ - escritos em JSON ou YAML
+ - "metadata": descreve o Pod e seus rótulos.
+ - "spec": descreve os volumes e uma lista de contêiners que executarão no Pod.
+*************************************************
+
+
+********************* OBS.: *********************
+Arquivo "kuard-pod.yaml":
+
+apiVersion: v1
+kind: Pod
+metadata:
+	name: kuard
+spec:
+	containers:
+		- images: gabes1985/kuard:blue
+		  name: kuard
+		  ports:
+		  	- containerPort: 8080
+		  	  name: http
+		  	  protocol: TCP
+*************************************************
+
+--------------------------------------------------
+Iniciar uma única instância do manifesto do Pod  
+--------------------------------------------------
+kubectl apply -f kuard-pod.yaml
+
+
+--------------------------------------------------
+Descrever um Pod específico  
+--------------------------------------------------
+kubectl describe pods kuard
+kubectl describe pods <nome_pod>
+
+
+--------------------------------------------------
+Remover um Pod específico. Os Pods não são removidos imediatamente, possuem um tempo de tolerância para reajustar as configurações do cluster.
+--------------------------------------------------
+kubectl delete pods/kuard
+kubectl delete -f kuard-pod.yaml
+
+
+--------------------------------------------------
+Encaminhar Pod para uma porta específicada. Por exemplo, para realizar comunicação por http://localhost:8080  
+--------------------------------------------------
+kubectl port-foward kuard 8080:8080
+
+
+--------------------------------------------------
+Fazer download dos logs atuais da instância em execução. 
+Flags:
+  "-f" mostra streaming contínuo.  
+  "--previous" obtém logs de uma instância anterior
+--------------------------------------------------
+kubectl logs kuard
+kubectl logs -f kuard
+
+--------------------------------------------------
+Executar comandos no contexto do próprio contêiner.
+--------------------------------------------------
+kubectl exec kuard date
+kubectl exec -it kuard ash
+
+
+********************* OBS.: *********************
+Arquivos podem ser copiados da nuvem/ do contêiner para local e vice-versa.
+Não é recomendado copiar arquivos para contêiners, o recomendado é mantê-lo como uma estrutura imutável.
+Método aconselhado é realizar a contrução e rollout do contêiner em questão.
+*************************************************
+kubectl cp <nome_pod>:/captures/capture3.txt ./capture3.txt
+kubectl cp $HOME/config.txt <nome_pod>:/config.txt
+
+
+********************* OBS.: *********************
+Verificação de sanidade:
+ - liveness (vitalícia) e readiness (prontidão) ajudam a "saúde" dos contêiners, mas nem sempre é útil, por exemplo, em deadlocks;
+ - liveness (vitalícia) probe executam lógica específicas da aplicação;
+ - liveness (vitalícia) probe podem ser executados por contêiners em cada Pod;
+ - liveness (vitalícia) determina se uma aplicação está executando de forma apropriada;
+ - readiness (prontidão) descreve quando um contêiner está pronto para atender às requisições dos usuários;
+ - readiness (prontidão) quando apresentam falhas, contêiners são removidos dos balanceadores de carga do serviço;
+ - liveness (vitalícia) quando apresentam falhas, contêiners são reiniciados;
+ - existe verificações de conexão TCP: "tcpSocket";
+ - sondagens com "exec" (através de scripts que sondam o contêiner), se retornado valor igual a zero, significa que há falhas
+*************************************************
+
+
+********************* OBS.: *********************
+Arquivo "kuard-pod.yaml":
+Criar um Pod usando o manifesto "kuard-pod.yaml" e definir um emcaminhamento para a porta 8080. 
+*************************************************
+kubectl apply -f kuard-pod-health.yaml
+kubectl port-forward kuard 8080:8080
+
+********************* OBS.: *********************
+Métrica de UTILIZAÇÃO ( quantidade_de_recurso_ativamente_usado / quantidade_de_recurso_adquirido ):
+	- existem duas métricas: requisições (requests) e limites (limits);
+	- requests: quantidade mínima de recursos necessária para executar a aplicação;
+	- limits: quantidade mínima de recursos que um aplicação pode consumir;
+*************************************************
+
+
+********************* OBS.: *********************
+Maneiras de usar o volume de dados:
+	"emptyDir" para comunicação / sincronização: 
+	 - contêiners pode usar volumes compartilhados para servir uma aplicação através dessa variável;
+	 - pode-se usar o volume "emptyDir" que possui escopo e tempo de vida do Pod, mas pode ser compartilhado entre dois ou mais contêiners.
+
+	"emptyDir" para cache:
+	 - pode ser que uma aplicação consiga reduzir o desempenho não necessitando carregar arquivos mais pesados (por exemplo, imagens originais e thumbnails).
+	 - pode-se usar o volume "emptyDir" com a finalidade de o cache do Pod sobreviver a reinicialização.
+
+	dados persistentes, Kubernetes oferece:
+	 - volumes de recursos de armazenagem de rede, por exemplo, NFS e iSCSI;
+	 - volumes de recursos de armazenagem de rede por provedor de nuvem, por exemplo, Elastic Block Store da Amazon, Files and Disk Storage da Azure ou Persistent Disk do Google.
+
+	"hostPath" para montar sistemas de arquivo host:
+	 - há aplicações que necessitam de sistema de arquivos subjacente do host, por exemplo, acesso a página /dev/.
+	 - pode-se usar o volume "hostPath" com a finalidade montar localidades arbitrárias no nó worker do contêiner.
+*************************************************
+
+
+********************* OBS.: *********************
+Persistência de dados em discos remotos:
+ - Kubernetes montará e desmontará autmaticamente a área de armazenagem apropriada sempre que um Pod estiver usando volume esvalonável em máquina particular.
+ - Exemplo de uso de um servidor NFS:
+
+# A parte restante da definição do Pod
+volumes:
+	- name: "kuard-data"
+	  nfts:
+	  	server: my.nfs.server.local
+		path: "/exports"
+		
+*************************************************

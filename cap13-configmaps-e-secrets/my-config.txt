@@ -1,0 +1,3 @@
+# Este é um arqiuvo de configuração de exemplo que poderia ser usado para configurar uma aplicação
+parameter1 = value1
+parameter2 = value2

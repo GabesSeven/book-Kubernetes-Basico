@@ -1,0 +1,8 @@
+kind: Service
+apiVersion: v1
+# utilizando DNS para se comunicar com DB externo ao cluster
+metadata:
+  name: external-database
+spec:
+  type: ExternalName
+  externalName: database.company.com

@@ -1,0 +1,11 @@
+apiVersion: extensions/v1
+kind: Service
+# expor o controlador ReplicaSet de nível hierarquico mais alto como serviço do Kubernetes
+metadata:
+  name: mysql  
+spec:
+  ports:
+  - ports: 3306
+    protocol: TCP  
+  selector:
+    app: mysql

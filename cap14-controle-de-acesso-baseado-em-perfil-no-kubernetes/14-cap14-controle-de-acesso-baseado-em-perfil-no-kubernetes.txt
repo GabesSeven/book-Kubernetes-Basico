@@ -1,0 +1,112 @@
+********************* OBS.: *********************
+Controle de acesso baseado em perfil no Kubernetes:
+ - restringe acesso e ações nas APIs do Kubernetes;
+ - qualquer pessoa que possa executar um códo arbitrário no cluster poderá obter privilégio root;
+ - para garantir a segurança em um ambiente multitenant hostil (vários inquilinos) é necessário mais mecanismos além do RBAC, deve ser necessário isolar os Pods que estão executando no cluster (contêiner hipervisor isolado ou snadbox de contêiners);
+ - existe como burlar o controle acrescentando um RoleBinding para mapear um usuário de perfil;
+ - toda requisição feita ao Kubernetes é autenticada antes. Kubernetes não possui sistema de armazenagem de idêntidade próprio, logo, o controle ou outras ações desse deve ser feito por conta própria
+ - depois da autenticação, a autorização determina se eles estão autorizados a fazer a requisição ou não, caso não tenha retorna status HTTP 403.
+*************************************************
+
+********************* OBS.: *********************
+Role-Based Access Control (RBAC):
+ - perfil (roles) é um conjunto de capacidades abstratas, por exemplo, aptidão de criar Pods;
+ - vinculação de perfis (roles bindings) é a atribuição de um perfil a uma ou mais identidades, por exemplo, vincular um perfil a aptidão de criar Pods;
+
+Perfis de vinculação de perfis no Kubernetes (pares de vinculação de perfil e perfil):
+ - Role e RoleBinding se aplica somente a um namespace;
+ - ClusterRole e ClusterRoleBinding se aplica a todo cluster;
+ 
+ - vincular um RoleBinding a um perfil somente concederá a autorização no namepace Kubernetes que contenha tanto o Role como o RoleDefinition;
+ - ;
+*************************************************
+
+********************* OBS.: *********************
+Identidade no Kubernetes:
+ - toda requisição está associda a alguma identidade, uma requisição sem identidade será associada a "system:unauthenticated";
+ - identidades de usuário são contas associadas os usuários e frequentemente envolvem automação para serviços terceiros;
+ - identidades de contas de serviço são gerenciadas pelo próprio Kubernetes e associdas a componentes que executam dentro do cluster;
+
+Provedores aceitos para autenticação:
+ - HTTP Basic IsAuthentication (já obsoleto);
+ - certificados de cliente x509;
+ - arquivos de token estático no host;
+ - provedores de autenticação na nuvem (Azure Active Directory e AWS Identity and Access Management - IAM);
+ - webhooks de autenticação.
+*************************************************
+
+
+********************* OBS.: *********************
+Identidade no Kubernetes:
+ - perfis são definidos com base em recursos (por exemplo, Pods) ou com base em verbos (métodos HTTP)
+
+ create = POST (cria recurso)
+ delete = DELETE (remove recurso)
+ get = GET (obtém recurso)
+ list = GET (lista recursos)
+ patch = PATCH (modifica recurso parcialmente)
+ update = PUT (modifica recurso totalmente)
+ watch = GET (observa atuaizações em recurso via streaming)
+ proxy = GET (conecta-se com recurso por meio de proxy de streaming WebSocket)
+*************************************************
+
+--------------------------------------------------
+Ver perfis prontos (build-in) do Kubernetes, também é possível criar o seu próprio
+Perfis para usuários finais genéricos:
+ - "cluster-admin" concede acesso total a todo cluster;
+ - "admin" concede acesso total a um namespace completo;
+ - "edit" permite a um usuário final fazer alterações em um namespace;
+ - "view" permite acesso somente de leitura em um namespace;
+
+Ver vinculações ClusterRole configuradas por padrão
+--------------------------------------------------
+kubectl get clusterroles
+kubectl get clusterrolebindings
+
+********************* OBS.: *********************
+Reconciliação automática de perfis prontos:
+ - quando o cluster inicia, ele reinstala automaticamente os "ClusterRole"s default, portanto alterações podem ser reescritas;
+ - para evitar isso deve-se acrescentar a anotação "rbac.authorization.kubernetes.io/autoupdate" com valor "false" no "ClusterRole" embutido;
+
+OBS.:
+ - por padrão, Kubernetes instala um perfil de cluster que permite a usuários system:unauthenticated acessar o endpoint, em um cluster hospedado em ambiente hostil (como a internet pública), qualquer um pode ter acesso;
+ - por segurança, setar a flag "--anonymous-auth=false"
+*************************************************
+
+********************* OBS.: *********************
+Técnicas para gerenciar o RBAC:
+ - "auth can-i" é uma ferramenta para testar se um usuário em particular pode executar uma determinada ação;
+ - "auth can-i" pode validar parâmetros de configuração ao configurar o cluster;
+ - "auth can-i" aceita como parâmetro um verbo e um recurso;
+*************************************************
+
+--------------------------------------------------
+Infomar se o usuário atual do "kubectl" tem autorização para criar Pods.
+Testar sub-recursos como logs ou encaminhamentos de portas com a flag "--subresource".
+--------------------------------------------------
+kubectl auth can-i create pods
+kubectl auth can-i get pods --subresource=logs
+
+********************* OBS.: *********************
+Gerenciando o RBAC no sistema de controle de versões:
+ - pode-se armazenar recursos RBAC no sistema de controle de versões para casos como auditoria, atribuição de responsabilidade e rollback de mudanças na política do RBAC, por exemplo;
+ - "reconcile" é um comando que faz a reconciliação de um conjunto de perfis e de vinculações de perfis em formato texto com o estado atual do cluster;
+ - "--dry-run" flag que permite ver as alterações antes que sejam efetuadas.
+*************************************************
+kubectl auth reconcile -f some-rbac-config.yaml
+
+********************* TÓPICOS AVANÇADOS *********************
+Tópico avançado - Agregando ClusterRoles:
+ - clonar "ClusterRole" para outro perfil não garante o funcionamento, está sujeito a erros;
+ - "regras de agregação" combina vários perfis em um novo perfil, isso garante o bom funcionamento;
+ - "regras de agregação" ocorre por meio do seletor de rótulo "clusterRoleSelector";
+ - boa prática é definir vários subperfis com regras especificadas pelos diferentes perfis com diferentes regras; 
+*************************************************
+
+
+********************* TÓPICOS AVANÇADOS *********************
+Tópico avançado - Usando grupos para vinculações:
+ - ao vincular um usuário a um grupo com o "ClusterRole" ou "Role" em um namespace, ele ganha acesso a recursos e verbos definidor por esse perfil;
+ - just In Time (JIT) é a ação de adicionar um funcionário temporariamente, por exemplo, uma chamada de emergência no meio da noite;
+ - para adicionar um grupo a um ClusterRole, utiliza-se "Group" no "subject" da vinculação.
+*************************************************

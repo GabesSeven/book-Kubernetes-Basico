@@ -1,0 +1,23 @@
+apiVersion: app/v1
+kind: StatefulSet
+# conjunto replicado de três Pods MongoDB usando um objeto StatefulSet
+metadata:
+  name: mongo
+spec:
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:3.4.1
+        command:
+        - mongod
+        - --replSet
+        - rs0
+        ports:
+        - containerPort: 21017
+          name: peer

@@ -1,0 +1,22 @@
+# Cria-se um ReplicaSet simples para gerenciar um daemon singlwton de fila de tarefas, para garantir que o novo pod será criado em caso de falha da máquina.
+apiVersion: batch/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: work-queue
+    component: queue
+    chapter: jobs
+  name: queue
+spec:
+  replicas: 1
+  template:
+      metadata:
+        labels:
+          app: work-queue
+          component: queue
+          chapters: jobs
+  spec:
+    containers:
+    - name: queue
+      image: "gcr.io/kuar-demo/kuard-amd64:blue"
+      imagePullpolicy: Always

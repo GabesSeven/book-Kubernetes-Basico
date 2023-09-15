@@ -1,0 +1,5 @@
+kind: Service
+apiVersion: v1
+# utilizando IP para se comunicar com DB externo ao cluster
+metadata:
+  name: external-ip-database

@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+	name: kuard
+spec:
+	selector:
+		matchLabels:
+			run: kuard
+	# solicita a criação de uma única instância da aplicação "kuard" 
+	replicas: 1
+	templates:
+		metadata:
+			labels:
+				run: kuard
+		spec:
+			conteiners:
+			- name: kuard
+				image: gcr.io/kuar-demo/kuard-amd64:blue

@@ -1,0 +1,147 @@
+********************* OBS.: *********************
+ - em alguns casos ter serviços stateless (o máximo possível sem estado) resutará em sistemas mais confiáveis e gerenciáveis
+ - gerenciar armazenamento por contêineres pode ser algo complexo, pois arquiteturas cont aplicações desacopladas, imutáveis e de forma declarativa;
+ - complexidade envolve, por exemplo, a configuração de um ReplicaSet para o MongoDB que envolve a implantação do daemon Mongo e execução de um comando imperativo para indeitificar o líder do cluster;
+ - complexidade envolve, por exemplo, a existência da "força da gravidade dos dados (data gravity)", pois a maioria dos cluster não são construídos no vácuo, precisam ser adapatados a partir de sistemas implantados em Máquinas Virtuais (VMs);
+ - "força da gravidade dos dados (data gravity)" é um conceito no qual os aplicativos e serviços são atraídos em direção aos dados, quanto maior o volume de dados, maior a atração;
+ - complexidade envolve, por exemplo, banco de dados hospedado fora do cluster.
+*************************************************
+
+********************* OBS.: *********************
+Importando serviços externos (não só banco de dados):
+ - parecerá que o banco de dados estará executando no cluster, deve-se tirar proveito de todas primitivas para resolução de nomes (DNS) e descoberta de serviços disponíveis no Kubernetes;
+ - para teste, pode-se implatantar um banco de dados como contêiner transiente. Usa-se namespaces, por exemplo, "metadata.namespace:test" e "metadata.namespace:production", assim um mesmo nome de serviço em dois namespaces diferentes será resolvido em dois serviços diferentes;
+*************************************************
+
+********************* OBS.: *********************
+Serviços sem seletores:
+ - em serviços externos, não são usados rótulos, mas sim nomes de domínio (DNS), por exemplo "database.company.com" em "dns-service.yaml";  
+ - pode ser que voê não tenha o DNS, mas tenha o IP, portanto deve-se criar um "Service" sem um seletor de rótulos e sem tipo "ExternalName", por exemplo, em "external-ip-service.yaml";
+ - Kubernetes alocará um IP virtual, mas não há como nenhum seletor para o serviço, portanto não haverá endpoints preenchidos para o balanceador de carga distruibui o tráfego, será necessário criá-lo manualmente como em "external-ip-endpoints.yaml"
+
+Limitações aos serviços externos: verificação de sanidade
+ - não ocorre nenhuma verificação de sanidade, o usuário é responsável por garantir que o endpoint ou nome de DNS sejam confiáveis.
+*************************************************
+
+********************* OBS.: *********************
+Executando singletons confiáveis:
+ - primitivas como o ReplicaSet esperam que todo contêiner seja idêntico e substituível, mas soluções de armazenagem não são assim;
+ - solução é executar um único Pod que execute o banco de dados ou outra solução de armazenamento, não havendo necessidade de replicação;
+ - única desvantagem pode ser downtime limitado em caso de upgrade ou falha na máquina, mas ainda sim compensa, pela redução de complexidade que a solução trás;
+
+Executando singletons MySQL:
+ - objeto básico I - volume persistente para gerenciar o tempo de vida da armazenagem em disco, independente do tempo de vida da aplicação MySQL em execução;
+ - objeto básico II - Pod MySQL que executará a aplicação MySQL; 
+ - objeto básico III - serviço que exporá esse Pod aos outros contêineres do cluster
+
+Volumes persistentes não deixam os dados serem apagados, se uma aplicação for transferida para uma máquina diferente, o volume deverá ser transferido com ela:
+ - 1) pode-se usar o drive "nfs" (NFS) para que criar o volume persistente através do objeto "PersistentVolume", mas o Kubernetes aceita vários tipos de drives ("azure", "awsElasticBlockStore", "gcePersistentDisk");
+ - 2) precisa-se reivindicar o volume criado para o Pod através do "nfs-volume-claim.yaml", onde o campo selector utilizará rótulos para encontrar o volume criado anteriormente;
+ OBS.: Esses passos servem para isolar a definição de Pod da definição de armazenagem, há como fazer as duas juntas, porém isso amarraria a especificação do Pod com um provedor de volume específico (por exemplo, nuvem públic ou privada específica);
+ - 3) usa-se o ReplicaSet para construir o Pod singleton, é necessário para haver confiabilidade (se uma máquina falahar, para não destruir o Pod presente nela, linka o Pod com um ReplicaSet pois possui hierarquia mais alta);
+ - 4) expor o passo anterior como um serviço do Kubernetes.
+
+Após esses passos terá uma instância singleton confiável do MySQL executando no cluster e exposto com um serviço chamado "mysql" acessível por meio do domínio "mysql.svc.default.cluster".
+*************************************************
+kubectl  apply -f nfs-volume.yaml
+
+
+********************* OBS.: *********************
+Provisionamento dinâmico de volumes:
+ - o operador do cluster criará um ou mais objetos "StorageClass";
+ - permite referenciar a classe de armazenagem na reivindicação de volume persistente, em vez de referenciar um volume específico;
+ - o controlador de provisionamento usuará o drive adequado para criar um volume e o vincular à sua reivindicação de volume persistente;
+ - a anotação "volume.beta.kubernetes.io/storage-class" em "dynamic-volume-claim.yaml" é o que liga a reivinficação à classe de armazengem "storageclass.yaml";
+ - provisionamento automático de um volume persistente é um ótimo recurso para aplicações com estado (stateful) no Kubernetes;
+ - tempo de vida é definido na política de reivindicações do "PersistentVolumeClaim" e por padrão esse tempo de vida é vinculado ao Pod que cria o volume;
+ - remover o Pod significa remover o volume persistente.
+*************************************************
+
+
+********************* OBS.: *********************
+StatefulSets:
+ - armazenagem nativa do Kubernetes;
+ - são grupos replicados de Pods semelhante aos ReplicaSets.
+
+Propriedades dos StatefulSets:
+ - cada réplica recebe um nome de host persistente com um únic índice, por exemplo, "database-1", "database-2", ...;
+ - na criação ou escalação, cada réplica é feita na sequência dos índices, os próximos aguardam até o anterior estar pronto saudável e disponível;
+ - na remoção ou redução de número de réplicas, cada uma das réplicas de Pod também é removida do maior índice para o menor.
+
+Replicando o MongoDB manualmente com StatefulSet:
+ - como exemplo, um conjunto replicado de três Pods MongoDB usando um objeto StatefulSet;
+ - "clusterIP: None", é necessario um serviço "headless" (não possui IP virtual de cluster) para geernciar as entradas de DNS para o StatefulSet;
+ - como cada Pod tem um identidade única com StatefulSet, não faz sentido ter um IP único com balanceamento de carga para serviços replicados;
+ - fazer uma consulta DNS para o nome do host presente em "mongo.default.svc.cluster.local" resultará em todos os endereços do StatefulSet, mas cada uma será resolvida para o endeerço IP específico;
+ - resulta em nomes persistentes e bem definifos para cada réplica de um conjunto;
+ - pode-se configurar o "mongodb" para iniciar com o ReplicaSet "rs0" com um réplica principal, por exemplo, "mongo-0.mongo" e posteriormente adicionar as réplicas restantes;
+*************************************************
+kubectl apply -f mongo-simple.yaml 
+kubectl get pods 
+kubectl run -it --rm --image busybox busybox ping mongo-1.mongo 
+kubectl exec -it mongo-0 mongo
+--------------------------------------------------
+rs.initiate({
+    _id: "rs0",
+    members:[ { _id: 0, host: "mongo-0.mongo:27017" } ]
+});
+rs.add("mongo-1.mongo:27017")
+rs.add("mongo-2.mongo:27017")
+--------------------------------------------------
+
+********************* OBS.: *********************
+Automatizando a criação do cluster MongoDB:
+ - o ConfigMap adicionará um scrip na imaem de MongoDB existente "mongo-simple.yaml"; 
+ - inicialmente o script determina se o "mongo-0" ou não em execução;
+ - se sim, cria o ReplicaSet usando o comando imperativo presente em "mongo-simple.yaml";
+ - senão, esperará o ReplicaSet estar presente, em seguida, se registrará como um membro desse ReplicaSet;
+ - "mongo-configmap.yaml" dormirá por tempo indeterminado após a inicialização do cluster, pois assim o Pod que contém o Mongo não será reinicializado, todo contêiner em um Pod possuirá a mesma RestartPolicy, caso contrário o Kubernetes poderá achar que o Pod Mongo não está saudável. 
+ - pode-se combinar os três arquivos em um único objeto, em um único arquivo, separados por "---", lembrando que a definição de StatefulSet deve vir antes da de ConfigMap;
+*************************************************
+kubectl apply -f mongo-config-map.yaml 
+kubectl apply -f mongo-service.yaml 
+kubectl apply -f mongo.yaml 
+
+
+********************* OBS.: *********************
+Volumes persistentes e StatefulSets:
+ - deve-se montar um volume persistente no diretório "/data/db";
+ - StatefulSet faz replicação de mais de um Pod. deve-se adicionar template de reivindicação de volume persistente que é idêntico ao template de Pod, mas em vez de criar Pods cria reivindicação de volumes;
+ - para funcionar corretamente deve-se ter um provisionamente automático configurado para volumes persistentes ou preencher previamente um conjunto de objetos de volumes persistentes que serão usados pelo controlador de StatefulSet;
+*************************************************
+kubectl apply -f mongo-config-map.yaml 
+
+----------
+volumeMouts:
+- name: database
+  mouthPath: /data/db
+----------
+
+----------
+volumeClaimTemplates:
+- metadata: 
+    name: database
+    annotations:
+        volume.apha.kubernetes.io/storage-class: anything
+  spec:
+    accessMode: ["ReadWriteOnce"]
+    resources:
+        request:
+            storage: 100Gi
+----------
+
+********************* OBS.: *********************
+Observação final- os liveness probes:
+ - verificações liveness (vitalidade) determinará se um contêiner etá funcionando corretamente;
+*************************************************
+
+----------
+livenessProbe:
+    exec:
+        command:
+        - /usr/bin/mongo
+        - --eval
+        - db.serverStatus()
+    initialDelaySeconds: 10
+    timeoutSeconds: 10
+----------

@@ -1,0 +1,39 @@
+# Cria-se um volume no pod e o nomear como "config-volume".
+# Define o volume para ConfigMap para montagem.
+# "volumeMount" define o local ue será feita a montagem no contêiner "kuard".
+
+# "valueFrom" campo especial para especificar as variáveis de ambiente, especifica o ConfigMap e a chave desse ConfigMap 
+# argumentos de linha de comando se baseiam nas variáveis de ambiente: $(<nome-da-variavel-de-ambiente>) 
+
+apiVersion: v1
+kind: Pod
+metadata:
+	name: kuard-config
+spec:
+	containers:
+		- name: test-container
+			images: gcr.io/kuar-demo/kuard-amd64:blue
+			imagePullPolicy: Always
+			command:
+			 - "/kuard"
+			 - "$(EXTRA_PARAM)"
+			env:
+				- name: ANOTHER_PARAM
+					valueFrom:
+						configMapKeyRef:
+							name: my-config
+							key: another-param
+				- name: EXTRA_PARAM
+					valueFrom:
+						configMapKeyRef:
+							name: my-config
+							key: extra-param
+			volumeMounts:
+				- name: config-volume
+					mountPath: /config
+		volumeMounts:
+			- name: config-volume
+				configMap:
+					name: my-config
+		restartPolicy: Never
+

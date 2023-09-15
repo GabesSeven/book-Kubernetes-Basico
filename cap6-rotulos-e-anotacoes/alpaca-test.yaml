@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpaca-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alpaca
+      env: test
+  template:
+    metadata:
+      labels:
+        app: alpaca
+        env: test
+        ver: "2"
+    spec:
+      containers:
+        - name: alpaca-test
+          image: gcr.io/kuar-demo/kuard-amd64:green

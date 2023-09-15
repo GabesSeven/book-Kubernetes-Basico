@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bandicoot-staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bandicoot
+      env: staging
+  template:
+    metadata:
+      labels:
+        app: bandicoot
+        env: staging
+        ver: "2"
+    spec:
+      containers:
+        - name: bandicoot-staging
+          image: gcr.io/kuar-demo/kuard-amd64:green

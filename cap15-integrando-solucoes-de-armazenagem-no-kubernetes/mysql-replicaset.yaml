@@ -1,0 +1,42 @@
+apiVersion: extensions/v1
+kind: ReplicaSet
+# usando o controlador ReplicaSet de nível hierarquico mais alto, com um número de réplicas igual a um para gerenciar o banco de dados
+metadata:
+  name: mysql
+  # rótulos para que possa vincular um service a este Pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+    template:
+      metadata:
+        labels:
+          app: mysql
+      spec:
+        conteiners:
+        - name: database
+          image: mysql
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+          env:
+          # Variáveis de ambiente não são uma boa prática no que concerne à segurança, mas está sendo usado para que o exemplo seja mais conciso.
+          # No Cap. 11 tem as opções mais apropriadas
+          - name: MYSQL_ROOT_PASSWORD
+            value: some-password-here
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+          ports:
+          - containerport: 3306
+          volumeMounts:
+            - name: database
+              # /var/lib/mysql é o local em que o MySQL armazena seus bancos de dados
+              mountPath: "/var/lib/mysql"
+          volumes:
+          - name: database
+            persistentVolumeClaim: 
+              claimName: database
+              

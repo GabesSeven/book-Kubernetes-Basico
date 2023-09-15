@@ -1,0 +1,84 @@
+********************* OBS.: *********************
+operadores de cluster podem personalizar seus clusters com componentes adicionais apropriados com o padrão de gerenciamento de sistema operador ("operator"):
+ - permitem ampliar os clusters pr conta própria;
+ - consumir add-ons para cluster desenvolvidos pela comunidade;
+ - desenvolver extensões que sejam empacotadas e vendidas em um ecossistema de plug-ins paa cluster.
+
+Cuidado ao instalar códio de terceiros:
+ - plug-ins geralmente necessitam de privilégio de administrador para executar suas operações;
+ - por exemplo, controladores de admissão podem ser usados para visualizar todos os objetos sendo criados no cluster;
+ - poderia ser facilmente empregado como vetero para roubar dados sigilosos ou execuar um código mal intensionado;
+*************************************************
+
+********************* OBS.: *********************
+Pontos de extensão:
+ - existe muitas formas de estender o Kubernetes, por exemplo, CustomResourceDefinitions até Container Network Interface (CNI);
+ - o livro foca em extensões ao servidor de API por meio do acréscimo de novos tipos de recursos ou de controladores de admissão às requisições de API;
+ - o livro NÃO foca em Container Network Interface (CNI), Container Storage Interface (CSI) ou Container Runtime Interface (CRI);
+ - existem outras maneiras de "extender" o cluster sem modificar o servidor de API, por exemplo, DaemonSets que instalam sistemas de logging e monitoração (por exemplo, serviços em busca de vunerabilidades XSS);
+
+Fluxo de requisições que passa pelo servidor de API do Kubernetes:
+ - 1) usuário;
+ - 2) controle de admissão (validação e modificação);
+ - 3) servidor de API;
+ - 4) armazenagem.
+
+Controladores de admissão:
+ - são chamados antes de objeto da API ser gravado na área de amrazenagem;   
+ - podem rejeita ou modifica as requisições da API;
+ - por exemplo, controladores para limites que define limites default para os Pods que não os tenham;
+ - por exemplo, controladores para injetar automaticamente contêiners sidecars em todos os Pods criados no sistema a fim de permitir experiências "automágicas";
+
+Recursos personalizados:
+ - usado em consjunto com os controladores de admissão;
+ - permite objetos de API totalmente novos serem adicionados à área de superfície da PAPI do Kubernetes que podem ser acrescentados em namespaces sujeitos a RBAC;
+ - podem ser usados com linha de comando "kubectl" como também por meio da API Kubernetes.
+
+CustomResourceDefinitions:
+ - criar esse objeto que é um metarrecurso, ou seja, recurso que define de outro recurso;
+ - esse recurso presentará testes de carga no cluster, quand um novo "LoadTest" é criado, um teste de carga será iniciado no cluster e direcionará o tráfego para um serviço;
+ - recurso personalisado deve ter um nome único composto por: <plura-do-recurso>.<grupo-de-api>;
+ - em "spec", "apigroup" define o grupo de API para o recurso e uma lista de versões para informar ao servidor;
+ - em "storage" deve ser verdadeiro somente para única versão do recurso;
+ - em "scope" informa se o recurso está restrito a um namespace ou não;
+ - em "names" permite definir valores singular, plural, nomes abreviados e tipo ("kind") do recurso.
+
+Criar instância do recurso personalisado com "loadtest":
+ - pode-se fornecer especificação OpenAPI para um recurso personalizado no CustomResourceDefinitions, porém para recurso simplesé mais melhor registrar um controlador de admissão de validação. 
+
+Código que monitora e interage com LoadTests:
+ - ainda não há nenhum controlador presente no cluster para reagir e tomar uma atitude quando um obeto LoadTest for definido;
+ - controlador do recurso personalizado LoadTest observa se há mudança nos objetos LoadTest;
+ - servidor de API cria/atualiza/remove os Pods LoadTest;
+ - código mais simples (porém que gera latência e carga desnecessária) executa um laço que realiza polling de novos objetos personalizados e criam ações para interagir com esses objetos;
+ - código mais complexos e eficaz é usar a API de observação (watch API) do servidor de API que disponibiliza;
+ - recomedada: padrão "informer" exporto na biblioteca "client-go" (https://github.com/kubernetes/client-go/tree/master/informers), pois possui suporte da comunidade;
+
+Validação:
+ - processo de garantir que os objetos LoadTest enviados ao servidor de API estejam bem formados e possam ser usados para criar teste de carga;
+ - OpenAPI faz uma validação básica da presença de campos obrigatórios ou se não há campos desconhecidos;
+ - por exemplo, em "loadtests" validar se possui esquema válido ("hhtp" ou "hhtps");
+ - por exemplo, em "requestsPerSecond" validar se é diferete e maior que zero;
+ - pode-se adicionar um controlador de admissão simples que é uma aplicação HTTP simples ao cluster;
+ - o servidor de API se conecta com o controlador de admissão por meio de um objeto Service do Kubernetes u com um URL arbitrário;
+ - controladores de admissão podem executar fora fo custer, por exemplo, como um produto Function-as-a-Service (Função como Serviço) de um provedor de nuvem Azure Functions ou AWS Lambda;
+ - instalar controlador de validação como um ValidatingWebhookConfiguation do Kubernetes que é um objeto que especifica o endpoint no qual o controlador de admissão executará e també o recurso (LoadTest) e a ação (CREATE) para quais o controlador deverá executar; 
+ - webhooks só pode ser acessados pela servidor de API do Kubernetes via HTTPS e com certificado que pode ser gerado pela própria CA do Kubernetes.
+
+Programa Go para gerar uma chave privada e um CSR (Certificate Signing Request):
+ - ao executar o arquivo .go gerará dois arquivos "server.crs" e "server-key.pem";
+ - 
+Tratamento de defaults:
+ - faz ser mais fácil para usuários usarem o recurso, de modo automático;
+ 
+
+*************************************************
+
+--------------------------------------------------
+Listar recurso dinâmico
+--------------------------------------------------
+kubectl get loadtests
+kubectl create -f loadtest-resource.yaml
+kubectl get loadtests
+kubectl create -f loadtest.yaml
+kubectl get loadtests

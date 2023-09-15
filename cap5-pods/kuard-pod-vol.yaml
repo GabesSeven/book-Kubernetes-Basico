@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+	name: kuard
+spec:
+	# Define todos os volumes que poderão ser acessados pelos contêiners que estão no manifesto Pod 
+	volumes:
+		- name: "kuard-data"
+		hostPath:
+			path: "/var/lib/kuard"
+containers:
+	- images: gcr.io/kuar-demo/kuard-amd64:blue
+		name: kuard
+	 # Define todos os volumes que serão montados em um container particular e o path com o qual cada volume deverá ser montado.
+	 # Dois contêiners diferentes podem montar o mesmo volume com path distintos.
+	 # Volume chamado "kuard-data" é montado pelo contêiner no path "/data".
+		volumesMounts:
+			- mountPath: "/data"
+			name: "kuard-data"
+		ports:
+			- containerPort: 8080
+				name: http
+				protocol: TCP
+

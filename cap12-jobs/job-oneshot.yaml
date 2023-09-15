@@ -1,0 +1,18 @@
+#  Cria um job one-shot
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oneshot
+spec:
+  template:
+    spec:
+      conteiners:
+      - name: kuar'
+        image: gcr.io/kuar-demo/kuard-amd64:blue
+        imagePullpolicy: Always
+    args:
+    - "--keygen-enable"
+    - "--keygen-exit-on-complete"
+    - "--keygen-num-to-gen=10"
+    restartPolicy: OnFailure
+

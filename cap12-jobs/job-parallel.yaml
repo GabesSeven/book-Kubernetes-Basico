@@ -1,0 +1,27 @@
+# Combinação dos parâmetros "completions" e "parallelism".
+# Objetivo é gerar 100 chaves com 10 execuções do kuard em que cada execção gerará 10 chaves.
+# Deve-se setar "completions" com 10 e "parallelism" com 5.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: parallel
+  labels: 
+    chapter: jobs
+spec:
+  parallelism: 5
+  completions: 10
+  template:
+      metadata:
+        labels:
+          chapters: jobs
+      spec:
+        containers:
+        - name: kuard
+          image: gcr.io/kuar-demo/kuard-amd64:blue
+          imagePullpolicy: Always
+          args:
+          - "--keygen-enable"
+          - "--keygen-exit-on-complete"
+          - "--keygen-num-to-gen=10"
+          restartPolicy: OnFailure
+

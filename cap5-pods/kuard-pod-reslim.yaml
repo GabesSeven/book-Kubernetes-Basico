@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+	name: kuard
+spec:
+	containers:
+		- images: gcr.io/kuar-demo/kuard-amd64:blue
+			name: kuard
+			resources:
+				# limite mínimo
+				# Faz com que o contêiner seja colocado em uma máquina com metade de uma CPU livre e 128MB de memória alocada para ele.
+				requests:
+					cpu: "500m"
+					memory: "128Mi"
+				# limite máximo
+				# Faz com que o contêiner seja colocado em uma máquina uma CPU livre e 256MB de memória alocada para ele.
+				limits: 
+					cpi: "1000m"
+					memory: "256Mi"
+			ports:
+		  	- containerPort: 8080
+		  	  name: http
+		  	  protocol: TCP
+

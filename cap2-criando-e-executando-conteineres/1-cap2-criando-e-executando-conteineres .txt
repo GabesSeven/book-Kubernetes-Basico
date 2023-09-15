@@ -1,0 +1,103 @@
+********************* OBS.: *********************
+Imagem exemplo para execução dos exercícios:  https://github.com/kubernetes-up-and-running/kuard
+
+Instalar Docker sobre Linux: https://docs.docker.com/desktop/install/linux-install/
+Instalar Docker Desktop: https://docs.docker.com/desktop/install/linux-install/
+Entrar no Docker: https://docs.docker.com/desktop/get-started/
+*************************************************
+
+--------------------------------------------------
+Realizar login ao DockerHub
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+A senha pode ser um token gerado: https://docs.docker.com/docker-hub/access-tokens/
+--------------------------------------------------
+docker login
+docker login -u <nome_usuario>
+
+
+--------------------------------------------------
+Criar uma imagem Docker denominada simple-node
+--------------------------------------------------
+docker build -t simple-node .
+
+--------------------------------------------------
+Executar a imagem criada no http://localhost:3000
+--------------------------------------------------
+docker run --rm -p 3000:3000 simple-node
+
+********************* OBS.: *********************
+Caso dê o erro:
+ERROR: Cannot connect to the Docker daemon at unix:///home/user/.docker/desktop/docker.sock. Is the docker daemon running?
+
+Tente:
+ - executar o comando como sudo;
+ - sudo systemctl status docker;
+ - sudo systemctl start docker;
+ - sudo usermod -aG docker $USER;
+ - sudo systemctl restart docker.
+*************************************************
+
+--------------------------------------------------
+Construir e executar a aplicação "kuard"
+--------------------------------------------------
+sudo docker build -t kuard .
+sudo docker run --rm -p 8080:8080 kuard
+
+
+--------------------------------------------------
+Atribuir uma tag. É possível concatenar outro indentificador usando dois pontos (:)
+--------------------------------------------------
+sudo docker tag <nome_tag> <nome_repositorio>:<nome_tag>
+
+sudo docker tag kuard gcr.io/kuar-demo/kuard-amd64:blue  
+sudo docker tag kuard gabes1985/kuard:blue
+
+
+--------------------------------------------------
+Upload da imagem no DockerHub
+--------------------------------------------------
+sudo docker push gcr.io/kuar-demo/kuard-amd64:blue 
+sudo docker push gabes1985/kuard:blue
+
+
+--------------------------------------------------
+Executar container com Docker
+--------------------------------------------------
+sudo docker run -d --name kuard --publish 8080:8080 gcr.io/kuar-demo/kuard-amd64:blue
+sudo docker run -d --name kuard --publish 8080:8080 gabes1985/kuard:blue
+
+
+--------------------------------------------------
+Abrir a aplicação web 
+--------------------------------------------------
+curl http://localhost:8080
+
+
+--------------------------------------------------
+Interromper e remover o contêiner atual 
+--------------------------------------------------
+sudo docker stop kuard
+sudo docker rm kuard
+
+
+--------------------------------------------------
+Executar container com Docker limitando o uso de memória
+--------------------------------------------------
+sudo docker run -d --name kuard --publish 8080:8080 --memory 200m --memory-swap 1G gcr.io/kuar-demo/kuard-amd64:blue
+sudo docker run -d --name kuard --publish 8080:8080 --memory 200m --memory-swap 1G gabes1985/kuard:blue
+
+--------------------------------------------------
+Executar container com Docker limitando o uso da CPU
+--------------------------------------------------
+sudo docker run -d --name kuard --publish 8080:8080 --memory 200m --memory-swap 1G --cpu-shares 1024 gcr.io/kuar-demo/kuard-amd64:blue
+sudo docker run -d --name kuard --publish 8080:8080 --memory 200m --memory-swap 1G --cpu-shares 1024 gabes1985/kuard:blue
+
+--------------------------------------------------
+Remover uma imagem
+--------------------------------------------------
+sudo docker rmi <nome_tag>
+sudo docker rmi <id_imagem>
+
+********************* OBS.: *********************
+É possível configurar um job cron para executar um GARBAGE COLLECTOR de imagens para excluir automaticamente imagens não utilizadas.
+*************************************************

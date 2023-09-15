@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+# Pode-se especificar umalista de certificados junto com os nomes de hosts que serão usados.
+metadata:
+  name: tls-ingress
+spec: 
+  spec:
+  - hosts:
+    - alpaca.example.com
+    secretName: tls-secret-name
+  rules:
+  - host: alpaca.example.com
+    http:
+    paths:
+    - backend:
+        serviceName: alpaca
+        servicePort: 8080  

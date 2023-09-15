@@ -1,0 +1,236 @@
+********************* OBS.: *********************
+Rótulos são FUNDAMENTAIS para definir relacionamento entre objetos Kubernetes (Pods e ReplicaSets), pois eles não possuem hierarquia entre si.
+Seletores de rótulos estão no Kubernetes por toda parte:
+   - balanceador de tráfego de rede para um conjunto de Pods;
+   - restrição de tráfego de rede para um conjunto de Pods;
+   - balanceador de serviços para um conjunto de Pods;
+   - escalonamento de Pods prontos para uso;
+   - entre outros
+*************************************************
+
+
+********************* OBS.: *********************
+Rótulos:
+ - pares chaves/valor que podem ser associados a Pods e ReplicaSets (objetos do Kubernetes) constitindo a base de agrupamentos de objetos. 
+ - chaves/valor representados por strings
+ - chave é <prefixo-opcional>/<nome>
+
+Anotações:
+ - pares chaves/valor para armazenar informações que não são de identificação, mas podem ser úteis para ferramentas e bibliotecas.
+
+*************************************************
+
+********************* OBS.: *********************
+Esses comandos eram muito utilizandos antigamente, atualmente a abordagem é escrever Manifestos em YAML
+
+Criar deployment (conjunto de Pod) "alpaca-prod" com rótulos (ambientes) "ver", "app" e "env"
+Criar deployment (conjunto de Pod) "alpaca-test" com rótulos (ambientes) "ver", "app" e "env"
+Criar dois deployments "bandicoot-prod" com rótulos (ambientes) "ver", "app" e "env"
+*************************************************
+kubectl run alpaca-prod --image=gcr.io/kuar-demo/kuard-amd64:blue --replicas=2 --labels="ver=1,app=alpaca,env=prod"
+kubectl run alpaca-test --image=gcr.io/kuar-demo/kuard-amd64:green --replicas=1 --labels="ver=2,app=alpaca,env=test"
+kubectl run bandicoot-prod --image=gcr.io/kuar-demo/kuard-amd64:green --replicas=2 --labels="ver=2,app=bandicoot,env=prod"
+kubectl run bandicoot-staging --image=gcr.io/kuar-demo/kuard-amd64:green --replicas=2 --labels="ver=2,app=bandicoot,env=staging"
+
+
+********************* alpaca-prod.yaml *********************
+=====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpaca-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: alpaca
+      env: prod
+  template:
+    metadata:
+      labels:
+        app: alpaca
+        env: prod
+        ver: "1"
+    spec:
+      containers:
+        - name: alpaca-prod
+          image: gcr.io/kuar-demo/kuard-amd64:blue
+=====================================================
+kubectl apply -f alpaca-prod.yaml
+
+
+********************* alpaca-test.yaml *********************
+=====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpaca-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alpaca
+      env: test
+  template:
+    metadata:
+      labels:
+        app: alpaca
+        env: test
+        ver: "2"
+    spec:
+      containers:
+        - name: alpaca-test
+          image: gcr.io/kuar-demo/kuard-amd64:green
+=====================================================
+kubectl apply -f alpaca-test.yaml
+
+
+********************* bandicoot-prod.yaml *********************
+=====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bandicoot-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bandicoot
+      env: prod
+  template:
+    metadata:
+      labels:
+        app: bandicoot
+        env: prod
+        ver: "2"
+    spec:
+      containers:
+        - name: bandicoot-prod
+          image: gcr.io/kuar-demo/kuard-amd64:green
+=====================================================
+kubectl apply -f bandicoot-prod.yaml
+
+
+********************* bandicoot-staging.yaml *********************
+=====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bandicoot-staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bandicoot
+      env: staging
+  template:
+    metadata:
+      labels:
+        app: bandicoot
+        env: staging
+        ver: "2"
+    spec:
+      containers:
+        - name: bandicoot-staging
+          image: gcr.io/kuar-demo/kuard-amd64:green
+=====================================================
+kubectl apply -f bandicoot-staging.yaml
+
+
+--------------------------------------------------
+Exibir deployments e seus rótulos
+--------------------------------------------------
+kubectl get deployments --show-labels
+
+
+********************* OBS.: *********************
+Rótulos:
+ - podem ser ATUALIZADOS;
+ - "kubectl label" modificará apenas o rótulo do próprio deployment, não afetará os objetos (ReplicaSets e Pods)
+ - "-L" exibe o valor do rótulo com uma coluna
+ - podem ser REMOVIDOS usando o sufixo "-"
+*************************************************
+kubectl label deployment alpaca-test "canary=true"
+kubectl get deployment -L canary
+kubectl label deployment alpaca-test "canary-"
+
+
+--------------------------------------------------
+Exibir todos os Pods executando no cluster.
+--------------------------------------------------
+kubectl get pods --show-labels
+
+
+********************* OBS.: *********************
+Seletores de rótulo (--selector)
+
+Exibir todos os Pods usando condicionais com "--selector":
+   - rótulo "ver" definido com 2;
+   - "," (vírgula) é o operador AND;
+   - "in" é o operador que verifica se pertence a um conjunto: "alpaca" ou "bandicoot";
+   - qualquer rótulo com algum valor "canary", necessário consultar todos deployments.
+   - chave "canary" não está definida.
+   - unir seletores positivos e negativos.
+
+Outros operadores negativos:
+  key=value
+  key!=value
+  key in (value1, value2)
+  key notin (value1, value2)
+  key
+  !key
+*************************************************
+kubectl get pods --selector="ver=2"
+kubectl get pods --selector="app=bandicoot,ver=2"
+kubectl get pods --selector="app in (alpaca,bandicoot)"
+kubectl get deployments --selector="canary"
+kubectl get deployments --selector="!canary"
+kubectl get pods -l "ver=2,!canary"
+
+
+********************* OBS.: *********************
+Seletores de rótulo em objeto da API:
+   - pode-se usar um seletor de rótulos em um manifesto YAML;
+   - todos os termos são selecionados como AND e o "!=" é convertido para uma expressão "NotIn" com um único valor.
+*************************************************
+selector:
+  matchLabels:
+    app: alpaca
+  matchExpressions:
+    - {key: ver, operator: In, values: [1, 2]}
+
+
+********************* OBS.: *********************
+Seletores de rótulo em objeto da API:
+ - versões mais antigas (ReplicationControllers e em serviços) aceitam somente em comando igual (=);
+ - pares chave/valor que devem corresponder ao objetivo alvo a ser selecionado.
+*************************************************
+=====================================================
+selector:
+  app: alpaca
+  ver: 1
+=====================================================
+
+
+********************* OBS.: *********************
+Anotações:
+ - nativamente seu principal uso são ROLLOUT de deployments, para manter o controle do status;
+ - usado também para armazenar dados de configuração para ferramentas externas (escalonadores de terceiros, ferramentas de monitoração);
+ - RECOMENDADO: usar anotações para recursos específicos, não como um banco de dados de propósito geral;
+ - Não há validação de dados, por exemplo, no caso ed armazegem de informação de um JSON pode ser interŕetado como uma string;
+ - armazenam metadados adicionais aos objetos do Kubernetes com único objetivo de dar assistência a ferramentas e bibliotecas;
+ - forma de outros programas darem orientação ao Kubernetes por meio de uma API armazenando "dados opacos" com um objeto;
+ - armazenam informações extras (motivo de atualização, política de escalonamento, melhorar qualidade visual ou usabilidade de uma UI, permitir que o objeto Deployment mantenha o cotrole dos ReplicaSets que está gerenciando para rollouts).
+*************************************************
+=====================================================
+metadata:
+  annotations:
+    example.com/icon-url: "https://example.com/icon.png"
+=====================================================
+
+--------------------------------------------------
+Limpar todos deployments. "--selector" deleta deployments pela condicional.
+--------------------------------------------------
+kubectl delete deployments --all
+
+

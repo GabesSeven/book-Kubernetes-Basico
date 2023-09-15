@@ -1,0 +1,118 @@
+********************* OBS.: *********************
+Processos de longa duração são, por exemplo, banco de dados, aplicaão web.
+Processos de curta duração são executados por objetos Jobs
+
+Jobs:
+  - cria Pods que executarão até que sejam concluídos com sucesso (saída de valor 0). Diferente do Pod comum que reiniciará continuamente não importando o código de saída;
+  - tarefas que serão executadas somente uma vez: migração de banco de dados ou jobs batch (em lote)
+
+Objeto Job:
+  - responsável por criar e gerenciar os Pods definidos em um template na especificação do Job;
+  - coordena a execução de vários Pods em paralelo;
+  - possíveis erros: Job não executar caso os recursos necessários não sejam encontrados pelo escalonador ou Pods duplicados sejam criados para uma tarefa específica;
+*************************************************
+
+********************* OBS.: *********************
+Variáveis de controle são "completions" e "parallelism".
+
+Padrões para Jobs
+ - "one shot": único Pod executa uma só vez até ser concluído com sucesso, por exemplo, migração de banco de dados
+   completions igual a 1 e parallelism igual a 1
+ - "número fixo de execuções completas em paralelo": um ou mais Pods executam uma ou mais vezes até alcançarem um número fixo de execuções completas, por exemplo, Pods processando um conjunto de tarefas em paralelo;
+   completions igual a 1+ e parallelism igual a 1+
+ - "fila de tarefas: jobs em paralelo": um ou mais pods executam uma só vez até serem concluídos com sucesso, por exemplo, Pods processando uma fila de tarefas centralizadas
+   completions igual a 1 e parallelism igual a 2+
+*************************************************
+
+
+********************* OBS.: *********************
+Job one shot:
+ - se algo não for bem sucedido, o controlador Job será responsável po recriar o Pod até que haja um término bem-sucedido;
+ - "-i" para iteratividade, espera o job executar e exibe a saída de log do mesmo;
+ - "--restart=OnFailure" para criar um objeto job;
+ - "--" simboliza que os próximos comandos são argumentos para a imagem do contêiner. Os argumentos instruem o servidor de teste kuard a gerar 10 chaves SSH de 4.096 bits.
+
+Depois que o job tiver terminado, objetos Job e Pod associados continuarão presentes caso deseja ver a saída de log, mas fica oculto, por isso usa-se a flag "-a".
+*************************************************
+kubectl run -i oneshot --image=grc.io/kuar-demo/kuard-amd64:blue --restart=OnFailure -- --keygen-enable --keygen-exit-on-complete --keygen-num-to-gen 10
+kubectl get -a jobs 
+kubectl delete jobs oneshot
+
+--------------------------------------------------
+Submeter o job one-shot
+--------------------------------------------------
+kubectl apply -f job-oneshot.yaml
+kubectl describe jobs oneshot
+
+--------------------------------------------------
+Visualizar o resultado do job observando logs do Pod criado
+--------------------------------------------------
+kubectl logs <nome-do-pod>
+kubectl logs oneshot-4kfdt
+
+********************* OBS.: *********************
+Falhas de Pod:
+ - Kubernetes fica no estado "CrashLoopBackOff";
+ - Kubernetes espera um pouco antes de reiniciar o Pod a fim de evitar um laço de falhas que consuma os recursos do nó. Tudo isso é tratado localmente pelo nó "kubelet";
+ - "restartPolicy:Never" diz ao "kubelet" que não reinicie o pod em caso de falha. O objeto Job criará um Pod substituto podendo gerar muito "LIXO" no cluster. 
+ - "restartPolicy:OnFailure" é o recomendável, onde reinicia o pod em caso de falha.
+ - liveness probes (sondagens para verificação de vitalidade) podem ser usados para analisar a saúde do Pod, por exemplo, quando os Pods traverem ou deixarem de fazer progresso.
+*************************************************
+
+********************* OBS.: *********************
+Paralelismo:
+ - geração de chaves pode ser lenta, paralelismo tem o intuíto de deixar mais rápido esse processo;
+ - "--watch" or "-w" para permanecer executando a aplicação e liste as mudanças à medida que ocorrerem;
+*************************************************
+kubectl logs job-parallel.yaml
+kubectl get pods -w
+kubectl delete job parallel
+
+
+********************* OBS.: *********************
+Fila de tarefas:
+ - ao processar tarefas em fila, algum serviço cria os itens de tarefas e os publica em uma fila;
+ - um job worker pode executar para processar cada tarefa até que a fila esteja vazia;
+ - cria-se um ReplicaSet simples para gerenciar um daemon singlwton de fila de tarefas, para garantir que o novo pod será criado em caso de falha da máquina;
+*************************************************
+kubectl apply -f rs-queue.yaml
+
+--------------------------------------------------
+Usar o daemon da fila de tarefas através do encaminhamento de porta
+--------------------------------------------------
+QUEUE_POD=$(kubectl get pods -l app=work-queue,component=queue -o jsonpath='{.items[0].metadata.name}')
+kubectl port-forward $QUEUE_POD 8080:8080
+
+
+********************* OBS.: *********************
+Iniciando fila de tarefas:
+ - expor o servidor de tarefas usando um serviço para ser mais fácil produtores e consumidores localizarem a fila de tarefas por meio de DNS.
+*************************************************
+kubectl apply -f service-queue.yaml
+
+********************* OBS.: *********************
+Carregando fila de tarefas:
+ - comando "curl" se comunicará com a fila de tarefas por meio do kubectl "port-forward"
+*************************************************
+curl 127.0.0.1:8080/memq/server/stats
+
+********************* OBS.: *********************
+Criando o job consumidor:
+ - atuando como consumir, pode-se retirar itens da fila de tarefas, criar uma chave e sair da fila quando estiver vazia;
+ - cinco Pods vão executar em paralelo até que a fila de tarefas esteja vazia. À medida que a fila esvaziar, os Pods consumidores terminarão de forma organizada e o job "consumers" será considerado concluído. 
+*************************************************
+kubectl apply -f job-consumers.yaml
+kubectl get pods
+
+--------------------------------------------------
+Limpar cluster
+--------------------------------------------------
+kubectl delete rs,svc,job -l chapter=jobs
+
+********************* OBS.: *********************
+CronJobs:
+ - para executa um job com certa perioticidade; 
+ - cria um objeto job a intervalos específicos. 
+*************************************************
+kubectl create -f cron-job.yaml
+kubectl dscribe <nome-do-cron-job>

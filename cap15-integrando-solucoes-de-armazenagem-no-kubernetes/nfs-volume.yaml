@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolume
+# criando volume persistente com nfs e um 1GB de armazenagem
+metadata:
+  name: database
+  labels:
+    volume: my-volume
+spec:
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  nfs:
+    server: 192.168.0.1
+    path: "/exports"
+

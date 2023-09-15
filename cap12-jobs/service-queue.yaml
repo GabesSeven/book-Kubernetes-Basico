@@ -1,0 +1,17 @@
+# Expor o servidor de tarefas usando um serviço para ser mais fácil produtores e consumidores localizarem a fila de tarefas por meio de DNS.
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: work-queue
+    component: queue
+    chapter: jobs
+  name: queue
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: work-queue
+    component: queue

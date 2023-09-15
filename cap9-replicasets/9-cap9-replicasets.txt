@@ -1,0 +1,87 @@
+********************* OBS.: *********************
+TODA MUDANÇA IMPERATIVA EDVE SER SEGUIDA DE UMA MUDANÇA EDCLARATIVA;
+Isso evita que o cluster volte ao estado desejado e possa ocasionar erros.
+*************************************************
+
+********************* OBS.: *********************
+"singletons" são Pods com contêiners individuais;
+Motivos para replicação de contêiners: redundância (para tolerância a falhas), escala (tratar muitas requisições ao mesmo tempo), distribuição (tratar partes de requisições em cada contêiner).
+ReplicaSets:
+ - ao executar mesmos contêiner em Pods diferentes, administra o conjunto de Pods e os considera como uma única entidade a ser definida e gerenciada;
+ - usados para descrever padrões comuns de implantação de aplicações e fornecem a base para autocorreção (self-healing);
+ - reescalona os Pods no caso de falha;
+ - utiliza de laços de reconciliação (reconciliation loop) são a ação para controlar os vários Pods.
+*************************************************
+kubectl apply -f https://j.hept.io/contour-deployment-rbac
+
+
+********************* OBS.: *********************
+Estado desejado: o que se deseja alcançar;
+Estado observado;
+Estado atual: é o estado observado do sistema no momento.
+
+Laços de reconciliação:
+ - executa constantemente fazendo com que o estado atual coincida com o estado desejado;
+ - é um sistema inerente orientado a objetivos e autocorretivo;
+ - um ReplicaSets não é dono dos Pods, somente os gerencia, para tal basta criar um ReplicaSet que adota somente um Pod que por sua vez escala cópias adicionais dos contêiners; 
+
+ReplicaSet:
+ - "metadata.name": nome único;
+ - "spec": descreve o número de Pods (réplicas) que executarão no cluster;
+ - utiliza RÓTULOS para classificar os Pods;
+ - reduzidos ou exandidos po meio da chave de atualização "spec.replicas" no objeto ReplicaSet submetido á API do Kubernetes.
+*************************************************
+
+--------------------------------------------------
+Submeter o ReplicaSet criado à API do Kubernetes
+--------------------------------------------------
+kubectl apply -f kuard-rs.yaml
+
+--------------------------------------------------
+Ver detalhes ReplicaSet
+--------------------------------------------------
+kubectl describe rs kuard
+
+--------------------------------------------------
+Analisar se um Pod está sendo gerenciado por um ReplicaSet através da chave de anotação "kubernetes.io/created-by"
+--------------------------------------------------
+kubectl get pods <nome-do-pod> -o yaml
+
+--------------------------------------------------
+Analisar se um Pod está sendo gerenciado por um ReplicaSet pelos rótulos
+--------------------------------------------------
+kubectl get pods -l app=kuard,version=2
+
+********************* OBS.: *********************
+Horizontal pod Autoscaling (HPA):
+ - lida com cenários de escalabilidade como uso da CPU, cache em memória, entre outros;
+ - "heapster" monitora as métricas e disponibiliza uma API para consumi-las;
+ - escalabidade horizontal, criação de réplicas adicionais de um Pod;
+ - escalabidade vertical, aumetar recursos (CPU, memória) para um Pod;
+*************************************************
+
+--------------------------------------------------
+Validar a presença do "heapster"
+--------------------------------------------------
+kubectl get pods --namespace=kube-system
+
+
+********************* OBS.: *********************
+Escalabilidade automática na CPU:
+ - geralmente para sistemas baseados em requisições que consomem CPU de maneira proporcional ao número de requisições;
+ - "horizontalpodautoscalers" (hpa) para visualizar, modificar ou remover um recurso. 
+*************************************************
+
+--------------------------------------------------
+Escalar um ReplicaSet na CPU, posteriormente visualizar, modificar ou remover um recurso
+--------------------------------------------------
+kubectl autoscale rs kuard --min=2 --max=5 --cpu-percent=80
+kubectl get hpa
+
+--------------------------------------------------
+Remover Pods que são gerenciados pelo ReplicaSet, por padrão também apaga Pods, porém a flag "--cascate=false" pode ser específicada para somente o objeto ReplicaSet.
+--------------------------------------------------
+kubectl delete rs kuard
+kubectl get pods
+kubectl delete rs kuard --cascate=false
+

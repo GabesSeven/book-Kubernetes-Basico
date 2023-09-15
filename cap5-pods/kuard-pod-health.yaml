@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+	name: kuard
+spec:
+	containers:
+		- images: gcr.io/kuar-demo/kuard-amd64:blue
+			name: kuard
+			# Realiza uma requisição "GET" no endpoint "/healthy" na porta "8080" do contêiner "kuard".
+			livenessProbe:
+				httpGet:
+					path: /healthy
+		 			port: 8080
+				# Executado de 5 segundos depois que todos contêiners do Pod tiverem sido criados.
+				initialDelaySeconds: 5
+				# Probe deve responder no intervalo de 1 segundo.
+				timeoutSeconds: 1
+				# Executa o probe a cada 10 segundos.
+				periodSeconds: 10
+				# Se mais de três probes falharem, contêiner possui falhas e deve ser reiniciado.
+				failureThreshould: 3
+			ports:
+		  	- containerPort: 8080
+		  	  name: http
+		  	  protocol: TCP
+
+# restartPolicy (política de reinicialização):
+# - "Always" (default);
+# - "OnFailure" (reinicia apenas no caso de falhas no liveness ou se o código de saída for diferente de zero);
+# - "Never"

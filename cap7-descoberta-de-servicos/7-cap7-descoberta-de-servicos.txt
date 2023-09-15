@@ -1,0 +1,126 @@
+"Começar a pensar nos serviços de uma forma lógica e deixar que o Kubernetes cuide dos detalhes sobre a loclização dos contêiners."
+
+********************* OBS.: *********************
+Descoberta de serviços e objeto Service:
+ - ajudam a encontrar quais processos estão esperando dados em quais endereços para quais serviços;
+ - inicia com um objeto Service que é uma forma de criar seletores de rótulos nomeados;
+ - "kubectl expose" cria um serviço;
+ - serviços recebem im IP virtual (IP do cluster) cujo balanceamento de carga é feito pelo sistema;
+ - Kubernetes oferece um serviço DNS exposto aos Pods que executam no cluster;
+*************************************************
+kubectl run alpaca-prod --image=grc.io/kuar-demo/kuard-amd64:blue --replicas=3 --port=8080 --labels="ver=1,app=alpaca,env=prod"
+kubectl expose deployment alpaca-prod
+kubectl run bandicoot-prod --image=grc.io/kuar-demo/kuard-amd64:blue --replicas=2 --port=8080 --labels="ver=2,app=bandicoot,env=prod"
+kubectl expose deployment bandicoot-prod
+kubectl get services -o wide
+
+
+
+--------------------------------------------------
+Interagir com um serviços através de um encaminhamento de porta
+--------------------------------------------------
+ALPACA_POD=$(kubectl get pods -l app=alpaca) -o jsonpath='{.items[0].metadata.name}
+kubectl port-forward $ALPACA_POD 48858:8080
+
+
+
+--------------------------------------------------
+Busca a versão mais atual do depployment "alpaca-prod" e apreseta em um editor.
+Depois de salvar o arquivo, o objeto será reescrito no Kubernetes, maneira mais rápida de modificar um objeto sem salvá-lo em um arquivo YAML. 
+--------------------------------------------------
+kubectl edit deployment/alpaca-prod
+
+
+
+********************* OBS.: *********************
+Verificação readiness:
+ - geralmente por meio de um GET HTTP para /ready na porta 8080;
+ - se três verificações falharem, será considerado que o Pod não está pronto;
+ - geralmente Pods são removidos e recriados, necessário reiniciar o comando "port-forward"
+ - "--watch" faz com que continue exibindo a atualização
+*************************************************
+ALPACA_POD=$(kubectl get pods -l app=alpaca) -o jsonpath='{.items[0].metadata.name}
+kubectl port-forward $ALPACA_POD 48858:8080
+
+kubectl get endpoints alpaca-prod --watch
+
+
+
+********************* OBS.: *********************
+NodePorts:
+ - permite o sistema ou usuário escolher uma porta, então qualquer nó do cluster encaminhará o tráfego dessa porta para o serviço;
+ - "kubectl edit", depois de executar, altere "spec.type" para "NodePort";
+ - "kubectl expose" especificando --type=NodePort;
+ - pode-se usar um tunelamento ssh para acessar remotamente.
+*************************************************
+kubectl edit service alpaca-prod
+kubectl describe service alpaca-prod
+ssh <nó> -L 8080:localhost:32711
+
+
+
+********************* OBS.: *********************
+LoadBalancer:
+ - expande o tipo NodePort configurando adicionalmente a nuvem para criar um balanceador de carga e direcioná-los para os nós de seu cluster;
+ - "kubectl edit", depois de executar, altere "spec.type" para "LoadBalancer";
+*************************************************
+kubectl edit service alpaca-prod
+
+
+
+********************* OBS.: *********************
+Endpoints:
+ - para utilizar serviços sem IPs de cluster;
+ - para cada objeto Service, kubernetes cria um objeto Endpoints companheiro que contém o IP desse serviço;
+ - recomendável para aplicações se você estiver escrevendo um código novo criado para executar desde o princípio, porém a maioria dos códigos são feitos para funcionar com IPs antigos e comuns.
+*************************************************
+kubectl get endpoints alpaca-prod --watch
+kubectl delete deployment alpaca-prod
+kubectl run alpaca-prod --image=gcr.io/kuar-demo/kuard-amd64:blue --replicas=3 --port=8080 --labels="ver=1,app=alpaca,env=prod"
+
+
+
+********************* OBS.: *********************
+Descoberta de serviços manual:
+ - descobrir serviços sem nenhum objeto Service;
+ - "kubectl get" para ver quais IPs foram atribuídos para cada Pod nos deployments
+*************************************************
+kubectl get pods -o wide --show-labels
+kubectl get pods -o wide --selector=app=alpaca,env=prod
+
+
+
+********************* OBS.: *********************
+kube-proxy e IPs de cluster:
+ - IPs de cluster são IPs virtuais estáveis que permite fazer o balanceamento de carga entre todos endpoints de um serviço através do "kube-proxy";
+ - kube-proxy observa se há novos serviços no cluster por meio do servidor de API, programando conjunto de regras no firewall iptables a fim de reescrever os destinos dos pacotes;
+ - ao criar um serviço o usuário pode adotar um IP ou faixa de IPs específicos por meio do "kube-apiserver" com a flag "--service-cluster-ip-range".
+*************************************************
+kubectl get pods -o wide --show-labels
+kubectl get pods -o wide --selector=app=alpaca,env=prod
+
+
+
+********************* OBS.: *********************
+IPs de cluster e suas variáveis de ambiente:
+ - É possível injetar um conjunto de variáveis antigas de ambiente nos Pods quando eles iniciam;
+*************************************************
+BANDICOOT_POD=$(kubectl get pods -l app=bandicoot -o jsonpath='{.items[0].metadata.name'}')
+kubectl port-forward $BANDICOOT_POD 48858:8080
+
+
+
+********************* OBS.: *********************
+Conectando Kubernetes a ambientes legados (fora do cluster):
+ - pode-se usar serviços sem seletores para declarar um serviço Kubernetes com um endereço IP atribuido manualmente;
+ - DNS funcionará como esperado, mas o tráfego de rede fluirá para um recurso externo.
+ - outra opção, somente em ambiente ON-PREMISE, é executar o kube-proxy completo em um recurso externo e programar essa máquina para utilizar o servidor DNS no cluster Kubernetes; 
+ - há outros recursos de código aberto com as mesmas funcionalidades, por exemplo, Consul da HashiCorp.
+*************************************************
+BANDICOOT_POD=$(kubectl get pods -l app=bandicoot -o jsonpath='{.items[0].metadata.name'}')
+kubectl port-forward $BANDICOOT_POD 48858:8080
+
+--------------------------------------------------
+Limpar todos os objetos criados nessa seção
+--------------------------------------------------
+kubectl delete services,deployments -l app

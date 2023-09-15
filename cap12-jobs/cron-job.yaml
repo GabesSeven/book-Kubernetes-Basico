@@ -1,0 +1,16 @@
+# "spec.shedule" contém intervalo para CronJob no formato padrão "cron";
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: example-cron
+spec:
+  #  Executa a cada cinco horas
+  shedule: "0 */5 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: batch-job
+            image: my-batch-image
+          restartPolicy: OnFailure 

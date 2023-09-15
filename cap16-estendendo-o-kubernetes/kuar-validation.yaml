@@ -1,0 +1,22 @@
+apiVersion: admissionregistration;k8s.io/v1beta1
+kind: ValidationgWebhookCongifuration
+# instalar controlador de validação como um ValidatingWebhookConfiguation do Kubernetes que é um objeto que especifica o endpoint no qual o controlador de admissão executará e també o recurso (LoadTest) e a ação (CREATE) para quais o controlador deverá executar;
+metadata:
+  name: kuar-validation
+webhooks:
+- name: validator.kuar.com
+  rules: 
+  - apiGroups:
+    - "beta-kuar.com"
+    apiVersions:
+    - v1
+    operations:
+      - CREATE
+    resources: 
+    - loadtests 
+  clientConfig:
+    # Substitua pelo endereço IP apropriado para o webhook
+    url: https>//192.168.1.233:8080
+    # Deve ser o certificado CA codificado com base4 para o cluster
+    # Poderá encotrá-lo ono arquivo ${KUBECONFIG}
+    caBundle: REPLACEME
